@@ -44,10 +44,15 @@ GLProgram * glProgram;
 
 static std::vector<Vec3f> colorResponses; // Cached per-vertex color response, updated at each frame
 static std::vector<LightSource> lightSources;
+static float lightMoveSpeed = 0.5f;
+
+//coefficients for attenuation, aq the coefficient for d^2, al the coefficient for d, ac the constant coefficient, where d means the distance between the vertex and the light source
+static const float ac = 0;
+static const float al = 1;
+static const float aq = 0;
 
 void printUsage () {
-	std::cerr << std::endl
-		 << appTitle << std::endl
+	std::cerr << std::endl<< appTitle << std::endl
          << "Author: " << myName << std::endl << std::endl
          << "Usage: ./main [<file.off>]" << std::endl
          << "Commands:" << std::endl
@@ -57,6 +62,7 @@ void printUsage () {
          << " <drag>+<left button>: rotate model" << std::endl
          << " <drag>+<right button>: move model" << std::endl
          << " <drag>+<middle button>: zoom" << std::endl
+				 << " <left button> / <right button>: move the red light source"<< std::endl
          << " q, <esc>: Quit" << std::endl << std::endl;
 }
 
@@ -86,11 +92,11 @@ void init (const char * modelFilename) {
 
 		//8 light sources maximum
 		lightSources.resize(8);
-		lightSources[0] = LightSource(Vec3f(10.0f, 10.0f, 10.0f), Vec3f(1.0f, 0.9f, 0.8f));
+		lightSources[0] = LightSource(Vec3f(1.0f, 1.0f, 1.0f), Vec3f(1.0f, 0.9f, 0.8f));
 		lightSources[0].activeLightSource();
-		lightSources[1] = LightSource(Vec3f(-10.0f, 0.0f, -1.0f), Vec3f(0.0f, 0.1f, 0.3f));
+		lightSources[1] = LightSource(Vec3f(-2.0f, -1.0f, -1.0f), Vec3f(1.0f, 0.8f, 1.0f));
 		lightSources[1].activeLightSource();
-		lightSources[2] = LightSource(Vec3f(-5.0f, -1.0f, -1.0f), Vec3f(2.0f, 0.1f, 2.3f));
+		lightSources[2] = LightSource(Vec3f(0.0f, 1.0f, 1.0f), Vec3f(1.0f, 0.0f, 0.0f));
 		lightSources[2].activeLightSource();
 }
 
@@ -111,7 +117,9 @@ void updatePerVertexColorResponse () {
 						wi.normalize();
 						Vec3f Li = lighSource.getColor();
 						float f = 1; 			//BRDF
-						colorResponses[i] += Li * f * max(dot(n, wi), 0.0f);
+						float d = (lighSource.getPosition() - x).length();					//distance between the vertex x and the light source
+						float attenuation = 1 / (ac + al * d + aq * d * d);
+						colorResponses[i] += Li * f * max(dot(n, wi), 0.0f) * attenuation;
 					}
 				}
 		}
@@ -164,6 +172,24 @@ void key (unsigned char keyPressed, int x, int y) {
     }
 }
 
+void specialKey(GLint key, GLint x, GLint y){
+    switch (key) {
+            break;
+   	    case GLUT_KEY_UP:
+            break;
+        case GLUT_KEY_DOWN:
+            break;
+        case GLUT_KEY_LEFT:
+						lightSources[2].moveXBy(-lightMoveSpeed);
+            break;
+        case GLUT_KEY_RIGHT:
+						lightSources[2].moveXBy(lightMoveSpeed);
+            break;
+        default:
+            break;
+    }
+}
+
 void mouse (int button, int state, int x, int y) {
     camera.handleMouseClickEvent (button, state, x, y);
 }
@@ -204,6 +230,7 @@ int main (int argc, char ** argv) {
     glutReshapeFunc (reshape);
     glutDisplayFunc (display);
     glutKeyboardFunc (key);
+		glutSpecialFunc(specialKey);
     glutMotionFunc (motion);
     glutMouseFunc (mouse);
     printUsage ();
