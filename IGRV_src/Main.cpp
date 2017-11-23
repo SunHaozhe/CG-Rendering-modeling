@@ -46,6 +46,11 @@ static std::vector<Vec3f> colorResponses; // Cached per-vertex color response, u
 static std::vector<LightSource> lightSources;
 static float lightMoveSpeed = 0.5f;
 
+static float kd = M_PI;           //coefficient diffusion
+static float fd = kd / M_PI; 			//Lambert BRDF (diffusion)
+static float ks = 1;							//coefficient specular
+static float s = 1;               //shininess
+
 //coefficients for attenuation, aq the coefficient for d^2, al the coefficient for d, ac the constant coefficient, where d means the distance between the vertex and the light source
 static const float ac = 0;
 static const float al = 1;
@@ -62,6 +67,8 @@ void printUsage () {
          << " <drag>+<left button>: rotate model" << std::endl
          << " <drag>+<right button>: move model" << std::endl
          << " <drag>+<middle button>: zoom" << std::endl
+				 << " <f>: full screen mode"<< std::endl
+				 << " <w>: skeleton mode"<< std::endl
 				 << " <left button> / <right button>: move the red light source"<< std::endl
          << " q, <esc>: Quit" << std::endl << std::endl;
 }
@@ -109,14 +116,17 @@ void updatePerVertexColorResponse () {
 						LightSource lighSource = lightSources[lightIndex];
 						Vec3f x = mesh.positions()[i]; 		//coordinates of this vertex
 						Vec3f n = mesh.normals()[i];  		//normal vector of this vertex
-						Vec3f cameraPosition = Vec3f(0.0f, 0.0f, 0.0f);
+						Vec3f cameraPosition;
 						camera.getPos(cameraPosition);
-						Vec3f wo = cameraPosition - x;
+						Vec3f wo = (cameraPosition - x);
 						wo.normalize();
-						Vec3f wi = lighSource.getPosition() - x;
+						Vec3f wi = (lighSource.getPosition() - x);
 						wi.normalize();
 						Vec3f Li = lighSource.getColor();
-						float f = 1; 			//BRDF
+						Vec3f wh = (wi + wo);
+						wh.normalize();									 //half vector
+						float fs = ks * pow(dot(n, wh), s);						//Blinn-Phong BRDF (specular)
+						float f = fd + fs;
 						float d = (lighSource.getPosition() - x).length();					//distance between the vertex x and the light source
 						float attenuation = 1 / (ac + al * d + aq * d * d);
 						colorResponses[i] += Li * f * max(dot(n, wi), 0.0f) * attenuation;
