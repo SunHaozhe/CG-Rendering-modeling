@@ -1,12 +1,12 @@
 // --------------------------------------------------------------------------
 // Copyright(C) 2009-2016
 // Tamy Boubekeur
-// 
-// Permission granted to use this code only for teaching projects and 
+//
+// Permission granted to use this code only for teaching projects and
 // private practice.
 //
-// Do not distribute this code outside the teaching assignements.                                                                           
-// All rights reserved.                                                       
+// Do not distribute this code outside the teaching assignements.
+// All rights reserved.
 // --------------------------------------------------------------------------
 
 #include <GL/glew.h>
@@ -24,6 +24,7 @@
 #include "Mesh.h"
 #include "GLProgram.h"
 #include "Exception.h"
+#include "LightSource.h"
 
 using namespace std;
 
@@ -32,7 +33,7 @@ static const unsigned int DEFAULT_SCREENHEIGHT = 768;
 static const string DEFAULT_MESH_FILE ("models/man.off");
 
 static const string appTitle ("Informatique Graphique & Realite Virtuelle - Travaux Pratiques - Algorithmes de Rendu");
-static const string myName ("your name");
+static const string myName ("Haozhe Sun");
 static GLint window;
 static unsigned int FPS = 0;
 static bool fullScreen = false;
@@ -42,20 +43,21 @@ static Mesh mesh;
 GLProgram * glProgram;
 
 static std::vector<Vec3f> colorResponses; // Cached per-vertex color response, updated at each frame
+static std::vector<LightSource> lightSources;
 
 void printUsage () {
-	std::cerr << std::endl 
+	std::cerr << std::endl
 		 << appTitle << std::endl
          << "Author: " << myName << std::endl << std::endl
          << "Usage: ./main [<file.off>]" << std::endl
-         << "Commands:" << std::endl 
+         << "Commands:" << std::endl
          << "------------------" << std::endl
          << " ?: Print help" << std::endl
 		 << " w: Toggle wireframe mode" << std::endl
-         << " <drag>+<left button>: rotate model" << std::endl 
+         << " <drag>+<left button>: rotate model" << std::endl
          << " <drag>+<right button>: move model" << std::endl
          << " <drag>+<middle button>: zoom" << std::endl
-         << " q, <esc>: Quit" << std::endl << std::endl; 
+         << " q, <esc>: Quit" << std::endl << std::endl;
 }
 
 void init (const char * modelFilename) {
@@ -81,12 +83,38 @@ void init (const char * modelFilename) {
     } catch (Exception & e) {
         cerr << e.msg () << endl;
     }
+
+		//8 light sources maximum
+		lightSources.resize(8);
+		lightSources[0] = LightSource(Vec3f(10.0f, 10.0f, 10.0f), Vec3f(1.0f, 0.9f, 0.8f));
+		lightSources[0].activeLightSource();
+		lightSources[1] = LightSource(Vec3f(-10.0f, 0.0f, -1.0f), Vec3f(0.0f, 0.1f, 0.3f));
+		lightSources[1].activeLightSource();
+		lightSources[2] = LightSource(Vec3f(-5.0f, -1.0f, -1.0f), Vec3f(2.0f, 0.1f, 2.3f));
+		lightSources[2].activeLightSource();
 }
 
 // EXERCISE : the following color response shall be replaced with a proper reflectance evaluation/shadow test/etc.
 void updatePerVertexColorResponse () {
-    for (unsigned int i = 0; i < colorResponses.size (); i++)
-        colorResponses[i] = Vec3f (1.f, 0.f, 0.f);
+    for (unsigned int i = 0; i < colorResponses.size (); i++){
+        colorResponses[i] = Vec3f (0.f, 0.f, 0.f);
+				for(unsigned int lightIndex = 0; lightIndex < lightSources.size(); lightIndex++){
+					if(lightSources[lightIndex].isActive()){
+						LightSource lighSource = lightSources[lightIndex];
+						Vec3f x = mesh.positions()[i]; 		//coordinates of this vertex
+						Vec3f n = mesh.normals()[i];  		//normal vector of this vertex
+						Vec3f cameraPosition = Vec3f(0.0f, 0.0f, 0.0f);
+						camera.getPos(cameraPosition);
+						Vec3f wo = cameraPosition - x;
+						wo.normalize();
+						Vec3f wi = lighSource.getPosition() - x;
+						wi.normalize();
+						Vec3f Li = lighSource.getColor();
+						float f = 1; 			//BRDF
+						colorResponses[i] += Li * f * max(dot(n, wi), 0.0f);
+					}
+				}
+		}
 }
 
 void renderScene () {
@@ -103,10 +131,10 @@ void reshape(int w, int h) {
 
 void display () {
     glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    camera.apply (); 
+    camera.apply ();
     renderScene ();
     glFlush ();
-    glutSwapBuffers (); 
+    glutSwapBuffers ();
 }
 
 void key (unsigned char keyPressed, int x, int y) {
@@ -118,7 +146,7 @@ void key (unsigned char keyPressed, int x, int y) {
         } else {
             glutFullScreen ();
             fullScreen = true;
-        }      
+        }
         break;
     case 'q':
     case 27:
@@ -159,7 +187,7 @@ void idle () {
         glutSetWindowTitle (title.c_str ());
         lastTime = currentTime;
     }
-    glutPostRedisplay (); 
+    glutPostRedisplay ();
 }
 
 int main (int argc, char ** argv) {
@@ -178,8 +206,7 @@ int main (int argc, char ** argv) {
     glutKeyboardFunc (key);
     glutMotionFunc (motion);
     glutMouseFunc (mouse);
-    printUsage ();  
+    printUsage ();
     glutMainLoop ();
     return 0;
 }
-
