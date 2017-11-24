@@ -44,12 +44,22 @@ GLProgram * glProgram;
 
 static std::vector<Vec3f> colorResponses; // Cached per-vertex color response, updated at each frame
 static std::vector<LightSource> lightSources;
+
+//speeds of interactions
 static float lightMoveSpeed = 0.5f;
+static float alphaSpeed = 0.01f;
+static float F0Speed = 0.01f;
 
 static float kd = M_PI;           //coefficient diffusion
-static float fd = kd / M_PI; 			//Lambert BRDF (diffusion)
 static float ks = 1;							//coefficient specular
+static float fd = kd / M_PI; 			//Lambert BRDF (diffusion)
 static float s = 1;               //shininess
+static float alpha = 0.5f;         //roughness
+static float F0 = 0.5f;						//Fresnel refraction index, dependent on material
+
+static bool microFacet = true;		//Blinn-Phong BRDF / micro facet BRDF
+static bool ggx = false;					//Cook-Torrance micro facet BRDF / GGX micro facet BRDF
+static bool schlick = false;			//Approximation of Schlick for GGX micro facet BRDF
 
 //coefficients for attenuation, aq the coefficient for d^2, al the coefficient for d, ac the constant coefficient, where d means the distance between the vertex and the light source
 static const float ac = 0;
@@ -70,6 +80,13 @@ void printUsage () {
 				 << " <f>: full screen mode"<< std::endl
 				 << " <w>: skeleton mode"<< std::endl
 				 << " <left button> / <right button>: move the red light source"<< std::endl
+				 << " <c>: micro facet mode / Blinn-Phong mode for specular reflection"<< std::endl
+				 << " <v>: Cook-Torrance micro facet mode / GGX micro facet mode for specular reflection"<< std::endl
+				 << " <b>: Smith for GGX micro facet mode / Approximation of Schlick for GGX micro facet mode for specular reflection"<< std::endl
+				 << " <r>: increase roughness alpha for micro facet mode"<< std::endl
+				 << " <t>: decrease roughness alpha for micro facet mode"<< std::endl
+				 << " <y>: increase Fresnel refraction index F0 for micro facet mode"<< std::endl
+				 << " <u>: decrease Fresnel refraction index F0 for micro facet mode"<< std::endl
          << " q, <esc>: Quit" << std::endl << std::endl;
 }
 
@@ -107,6 +124,42 @@ void init (const char * modelFilename) {
 		lightSources[2].activeLightSource();
 }
 
+float G1Schlick(Vec3f w, Vec3f n){
+	float k = alpha * sqrt(2.0f / M_PI);
+	return dot(n, w) / (dot(n, w) * (1 - k) + k);
+}
+
+float G1Smith(Vec3f w, float alpha2, Vec3f n){
+	return 2 * dot(n, w) / (dot(n, w) + sqrt(alpha2 + (1 - alpha2) * pow(dot(n, w), 2)));
+}
+
+float microFacetFs(Vec3f n, Vec3f wi, Vec3f wo, Vec3f wh){
+	float nwh2 = pow(dot(n, wh), 2);
+	float F = F0 + (1 - F0) * pow(1 - max(0.0f, dot(wi, wh)), 5);
+	if(ggx == false){
+		//Cook-Torrance micro facet mode
+		float alpha2 = pow(alpha, 2);
+		float D = exp((nwh2 - 1.0f) / (alpha2 * nwh2)) / (pow(nwh2, 2) * alpha2 * M_PI);
+
+		float shading = 2 * (dot(n, wh) * dot(n, wi)) / dot(wo, wh);
+		float masking = 2 * (dot(n, wh) * dot(n, wo)) / dot(wo, wh);
+		float G = min(1.0f, min(shading, masking));
+
+		return (D * F * G) / (4 * dot(n, wi) * dot(n, wo));
+	}else{
+		//GGX micro facet mode
+		float alphap = alpha;
+		float alphap2 = pow(alphap, 2);
+		float alpha2 = pow(alpha, 2);
+		float D = alphap2 / (M_PI * pow(1.0f + (alphap2 - 1) * nwh2, 2));
+		float G;
+		if(schlick == false) 	G = G1Smith(wi, alpha2, n) * G1Smith(wo, alpha2, n);
+		else 								 	G = G1Schlick(wi, n) * G1Schlick(wo, n); 							//approximation of Schlick
+
+		return (D * F * G) / (4 * dot(n, wi) * dot(n, wo));
+	}
+}
+
 // EXERCISE : the following color response shall be replaced with a proper reflectance evaluation/shadow test/etc.
 void updatePerVertexColorResponse () {
     for (unsigned int i = 0; i < colorResponses.size (); i++){
@@ -125,7 +178,9 @@ void updatePerVertexColorResponse () {
 						Vec3f Li = lighSource.getColor();
 						Vec3f wh = (wi + wo);
 						wh.normalize();									 //half vector
-						float fs = ks * pow(dot(n, wh), s);						//Blinn-Phong BRDF (specular)
+						float fs;
+						if(microFacet == false) fs = ks * pow(dot(n, wh), s);						//Blinn-Phong BRDF (specular)
+						else fs = microFacetFs(n, wi, wo, wh);													//Micro facet Cook-Torrance BRDF (specular)
 						float f = fd + fs;
 						float d = (lighSource.getPosition() - x).length();					//distance between the vertex x and the light source
 						float attenuation = 1 / (ac + al * d + aq * d * d);
@@ -176,6 +231,29 @@ void key (unsigned char keyPressed, int x, int y) {
 		glPolygonMode (GL_FRONT_AND_BACK, mode[1] ==  GL_FILL ? GL_LINE : GL_FILL);
         break;
         break;
+		case 'c':
+				microFacet = ! microFacet;
+				break;
+		case 'v':
+				ggx = ! ggx;
+				break;
+		case 'b':
+				schlick = ! schlick;
+				break;
+		//roughness
+		case 'r':
+				alpha = min((alpha + alphaSpeed), 1.0f);
+				break;
+		case 't':
+				alpha = max((alpha - alphaSpeed), alphaSpeed);
+				break;
+		//Fresnel refraction index, dependent on material
+		case 'y':
+				F0 = min((F0 + F0Speed), 1.0f);
+				break;
+		case 'u':
+				F0 = max((F0 - F0Speed), 0.0f);
+				break;
     default:
         printUsage ();
         break;
