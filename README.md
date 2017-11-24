@@ -2,6 +2,8 @@
 
 Author: Haozhe Sun
 
+Platform: Linux
+
 Compilation
 -----------
 Edit the Makefile to adjust it to your machine configuration and type make.
