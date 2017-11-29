@@ -6,9 +6,9 @@
 // All rights reserved.
 // ----------------------------------------------
 
-// Add here all the values you need to describe the lights or the materials. 
+// Add here all the values you need to describe the lights or the materials.
 // At first used const values, eventually stored in structures.
-// Then, use uniform variables and set them from your CPU program using 
+// Then, use uniform variables and set them from your CPU program using
 // the GLProgram methods.
 
 const vec3 lightPos = vec3 (5.0, 5.0, 5.0);
@@ -20,16 +20,15 @@ varying vec4 C; // Interpolated fragment-wise color
 
 void main (void) {
     gl_FragColor = vec4 (0.0, 0.0, 0.0, 1.0);
-    
+
     vec3 p = vec3 (gl_ModelViewMatrix * P);
     vec3 n = normalize (gl_NormalMatrix * N);
     vec3 l = normalize (lightPos - p);
     vec3 v = normalize (-p);
-    
+
     // ---------- Code to change -------------
-    vec4 color = C;
+    vec4 color = vec4(1.0f, 1.0f, 0.5f, 1.0f);
     // ----------------------------------------
-    
+
     gl_FragColor += color;
 }
- 

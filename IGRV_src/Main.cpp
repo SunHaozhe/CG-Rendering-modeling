@@ -160,7 +160,7 @@ float microFacetFs(Vec3f n, Vec3f wi, Vec3f wo, Vec3f wh){
 	}
 }
 
-// EXERCISE : the following color response shall be replaced with a proper reflectance evaluation/shadow test/etc.
+// the following color response shall be replaced with a proper reflectance evaluation/shadow test/etc.
 void updatePerVertexColorResponse () {
     for (unsigned int i = 0; i < colorResponses.size (); i++){
         colorResponses[i] = Vec3f (0.f, 0.f, 0.f);
@@ -191,7 +191,7 @@ void updatePerVertexColorResponse () {
 }
 
 void renderScene () {
-    updatePerVertexColorResponse ();
+    //updatePerVertexColorResponse ();
     glVertexPointer (3, GL_FLOAT, sizeof (Vec3f), (GLvoid*)(&(mesh.positions()[0])));
     glNormalPointer (GL_FLOAT, 3*sizeof (float), (GLvoid*)&(mesh.normals()[0]));
     glColorPointer (3, GL_FLOAT, sizeof (Vec3f), (GLvoid*)(&(colorResponses[0])));
