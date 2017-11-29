@@ -192,6 +192,27 @@ void updatePerVertexColorResponse () {
 
 void renderScene () {
     //updatePerVertexColorResponse ();
+		/*
+		for(unsigned int lightIndex = 0; lightIndex < lightSources.size(); lightIndex++){
+			if(lightSources[lightIndex].isActive()){
+					string lightName = "lightPos" + to_string(lightIndex);
+					glProgram->setUniform3f(lightName, lighSource.getPosition()[lightIndex]);
+					string lightColorName = "lightCol" + to_string(lightIndex);
+					glProgram->setUniform3f(lightColorName, lighSource.getColor()[lightIndex]);
+			}
+		}*/
+		LightSource lighSource = lightSources[0];
+		glProgram->setUniform3f("lightPos0" , lighSource.getPosition()[0] , lighSource.getPosition()[1] , lighSource.getPosition()[2]);
+		glProgram->setUniform3f("lightCol0" , lighSource.getColor()[0] , lighSource.getColor()[1] , lighSource.getColor()[2]);
+
+		lighSource = lightSources[1];
+		glProgram->setUniform3f("lightPos1" , lighSource.getPosition()[0] , lighSource.getPosition()[1] , lighSource.getPosition()[2]);
+		glProgram->setUniform3f("lightCol1" , lighSource.getColor()[0] , lighSource.getColor()[1] , lighSource.getColor()[2]);
+
+		lighSource = lightSources[2];
+		glProgram->setUniform3f("lightPos2" , lighSource.getPosition()[0] , lighSource.getPosition()[1] , lighSource.getPosition()[2]);
+		glProgram->setUniform3f("lightCol2" , lighSource.getColor()[0] , lighSource.getColor()[1] , lighSource.getColor()[2]);
+
     glVertexPointer (3, GL_FLOAT, sizeof (Vec3f), (GLvoid*)(&(mesh.positions()[0])));
     glNormalPointer (GL_FLOAT, 3*sizeof (float), (GLvoid*)&(mesh.normals()[0]));
     glColorPointer (3, GL_FLOAT, sizeof (Vec3f), (GLvoid*)(&(colorResponses[0])));
