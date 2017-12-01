@@ -47,7 +47,7 @@ static std::vector<LightSource> lightSources;
 
 //speeds of interactions
 static float lightMoveSpeed = 0.5f;
-static float alphaSpeed = 0.01f;
+static float alphaSpeed = 0.02f;
 static float F0Speed = 0.01f;
 
 static float kd = M_PI;           //coefficient diffusion
@@ -57,7 +57,7 @@ static float s = 1;               //shininess
 static float alpha = 0.5f;         //roughness
 static float F0 = 0.5f;						//Fresnel refraction index, dependent on material
 
-static bool microFacet = true;		//Blinn-Phong BRDF / micro facet BRDF
+static bool microFacet = false;		//Blinn-Phong BRDF / micro facet BRDF
 static bool ggx = false;					//Cook-Torrance micro facet BRDF / GGX micro facet BRDF
 static bool schlick = false;			//Approximation of Schlick for GGX micro facet BRDF
 
@@ -80,9 +80,10 @@ void printUsage () {
 				 << " <f>: full screen mode"<< std::endl
 				 << " <w>: skeleton mode"<< std::endl
 				 << " <left button> / <right button>: move the red light source"<< std::endl
-				 << " <c>: micro facet mode / Blinn-Phong mode for specular reflection"<< std::endl
-				 << " <v>: Cook-Torrance micro facet mode / GGX micro facet mode for specular reflection"<< std::endl
-				 << " <b>: Smith for GGX micro facet mode / Approximation of Schlick for GGX micro facet mode for specular reflection"<< std::endl
+				 << " <c>: Blinn-Phong mode for specular reflection"<< std::endl
+				 << " <v>: Cook-Torrance micro facet mode for specular reflection"<< std::endl
+				 << " <b>: GGX micro facet mode (Smith) for specular reflection"<< std::endl
+				 << " <n>: GGX micro facet mode (approximation of Schlick) for specular reflection"<< std::endl
 				 << " <r>: increase roughness alpha for micro facet mode"<< std::endl
 				 << " <t>: decrease roughness alpha for micro facet mode"<< std::endl
 				 << " <y>: increase Fresnel refraction index F0 for micro facet mode"<< std::endl
@@ -192,26 +193,40 @@ void updatePerVertexColorResponse () {
 
 void renderScene () {
     //updatePerVertexColorResponse ();
-		/*
-		for(unsigned int lightIndex = 0; lightIndex < lightSources.size(); lightIndex++){
-			if(lightSources[lightIndex].isActive()){
-					string lightName = "lightPos" + to_string(lightIndex);
-					glProgram->setUniform3f(lightName, lighSource.getPosition()[lightIndex]);
-					string lightColorName = "lightCol" + to_string(lightIndex);
-					glProgram->setUniform3f(lightColorName, lighSource.getColor()[lightIndex]);
+
+		GLfloat lightPos[3 * 8];
+		GLfloat lightCol[3 * 8];
+		GLint nb_light_active = 0;
+		for(unsigned int i = 0; i < 8; i++){
+			LightSource lightSource = lightSources[i];
+			if(lightSource.isActive() == true){
+				lightPos[3 * i + 0] = lightSource.getPosition()[0];
+				lightPos[3 * i + 1] = lightSource.getPosition()[1];
+				lightPos[3 * i + 2] = lightSource.getPosition()[2];
+				lightCol[3 * i + 0] = lightSource.getColor()[0];
+				lightCol[3 * i + 1] = lightSource.getColor()[1];
+				lightCol[3 * i + 2] = lightSource.getColor()[2];
+				nb_light_active++;
 			}
-		}*/
-		LightSource lighSource = lightSources[0];
-		glProgram->setUniform3f("lightPos0" , lighSource.getPosition()[0] , lighSource.getPosition()[1] , lighSource.getPosition()[2]);
-		glProgram->setUniform3f("lightCol0" , lighSource.getColor()[0] , lighSource.getColor()[1] , lighSource.getColor()[2]);
+		}
 
-		lighSource = lightSources[1];
-		glProgram->setUniform3f("lightPos1" , lighSource.getPosition()[0] , lighSource.getPosition()[1] , lighSource.getPosition()[2]);
-		glProgram->setUniform3f("lightCol1" , lighSource.getColor()[0] , lighSource.getColor()[1] , lighSource.getColor()[2]);
+		GLint variableLocationPos = glProgram->getUniformLocation("lightPositions");
+		GLint variableLocationCol = glProgram->getUniformLocation("lightColors");
+		glUniform3fv (variableLocationPos, nb_light_active, lightPos);
+		glUniform3fv (variableLocationCol, nb_light_active, lightCol);
+		glProgram->setUniform1i("numberOfLightActive", nb_light_active);
 
-		lighSource = lightSources[2];
-		glProgram->setUniform3f("lightPos2" , lighSource.getPosition()[0] , lighSource.getPosition()[1] , lighSource.getPosition()[2]);
-		glProgram->setUniform3f("lightCol2" , lighSource.getColor()[0] , lighSource.getColor()[1] , lighSource.getColor()[2]);
+		glProgram->setUniform1f("ac", ac);
+		glProgram->setUniform1f("al", al);
+		glProgram->setUniform1f("aq", aq);
+		glProgram->setUniform1f("ks", ks);
+		glProgram->setUniform1f("fd", fd);
+		glProgram->setUniform1f("s", s);
+		glProgram->setUniform1f("alpha", alpha);
+		glProgram->setUniform1f("F0", F0);
+		glProgram->setUniform1i("microFacet", microFacet);
+		glProgram->setUniform1i("ggx", ggx);
+		glProgram->setUniform1i("schlick", schlick);
 
     glVertexPointer (3, GL_FLOAT, sizeof (Vec3f), (GLvoid*)(&(mesh.positions()[0])));
     glNormalPointer (GL_FLOAT, 3*sizeof (float), (GLvoid*)&(mesh.normals()[0]));
@@ -253,27 +268,48 @@ void key (unsigned char keyPressed, int x, int y) {
         break;
         break;
 		case 'c':
-				microFacet = ! microFacet;
+				microFacet = false;
+				glProgram->setUniform1i("microFacet", microFacet);
 				break;
 		case 'v':
-				ggx = ! ggx;
+				microFacet = true;
+				ggx = false;
+				glProgram->setUniform1i("microFacet", microFacet);
+				glProgram->setUniform1i("ggx", ggx);
 				break;
 		case 'b':
-				schlick = ! schlick;
+				microFacet = true;
+				ggx = true;
+				schlick =  false;
+				glProgram->setUniform1i("microFacet", microFacet);
+				glProgram->setUniform1i("ggx", ggx);
+				glProgram->setUniform1i("schlick", schlick);
+				break;
+		case 'n':
+				microFacet = true;
+				ggx = true;
+				schlick =  true;
+				glProgram->setUniform1i("microFacet", microFacet);
+				glProgram->setUniform1i("ggx", ggx);
+				glProgram->setUniform1i("schlick", schlick);
 				break;
 		//roughness
 		case 'r':
 				alpha = min((alpha + alphaSpeed), 1.0f);
+				glProgram->setUniform1f("alpha", alpha);
 				break;
 		case 't':
 				alpha = max((alpha - alphaSpeed), alphaSpeed);
+				glProgram->setUniform1f("alpha", alpha);
 				break;
 		//Fresnel refraction index, dependent on material
 		case 'y':
 				F0 = min((F0 + F0Speed), 1.0f);
+				glProgram->setUniform1f("F0", F0);
 				break;
 		case 'u':
 				F0 = max((F0 - F0Speed), 0.0f);
+				glProgram->setUniform1f("F0", F0);
 				break;
     default:
         printUsage ();
