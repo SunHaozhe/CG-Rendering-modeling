@@ -85,13 +85,12 @@ void main (void) {
       float d = length(lightPositions[i] - x);
       float attenuation = 1.0 / (ac + al * d + aq * d * d);
       vec3 Li = lightColors[i];
-      float fd_shader = fd;
       float fs;
 
       if(microFacet == false) fs = ks * pow(dot(n, wh), s);						//Blinn-Phong BRDF (specular)
       else fs = microFacetFs(n, wi, wo, wh);
 
-      float f = fd_shader + fs;
+      float f = fd + fs;
 
       color += Li * f * max(dot(n, wi), 0.0) * attenuation;
     }

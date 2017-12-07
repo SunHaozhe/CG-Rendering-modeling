@@ -25,6 +25,7 @@
 #include "GLProgram.h"
 #include "Exception.h"
 #include "LightSource.h"
+#include "Ray.h"
 
 using namespace std;
 
@@ -60,6 +61,7 @@ static float F0 = 0.5f;						//Fresnel refraction index, dependent on material
 static bool microFacet = false;		//Blinn-Phong BRDF / micro facet BRDF
 static bool ggx = false;					//Cook-Torrance micro facet BRDF / GGX micro facet BRDF
 static bool schlick = false;			//Approximation of Schlick for GGX micro facet BRDF
+static bool perVertexShadow = false;
 
 //coefficients for attenuation, aq the coefficient for d^2, al the coefficient for d, ac the constant coefficient, where d means the distance between the vertex and the light source
 static const float ac = 0;
@@ -79,7 +81,7 @@ void printUsage () {
          << " <drag>+<middle button>: zoom" << std::endl
 				 << " <f>: full screen mode"<< std::endl
 				 << " <w>: skeleton mode"<< std::endl
-				 << " <left button> / <right button>: move the red light source"<< std::endl
+				 << " <left button> / <right button>: move the first light source"<< std::endl
 				 << " <c>: Blinn-Phong mode for specular reflection"<< std::endl
 				 << " <v>: Cook-Torrance micro facet mode for specular reflection"<< std::endl
 				 << " <b>: GGX micro facet mode (Smith) for specular reflection"<< std::endl
@@ -88,6 +90,7 @@ void printUsage () {
 				 << " <t>: decrease roughness alpha for micro facet mode"<< std::endl
 				 << " <y>: increase Fresnel refraction index F0 for micro facet mode"<< std::endl
 				 << " <u>: decrease Fresnel refraction index F0 for micro facet mode"<< std::endl
+				 << " <s>: active shadow mode (per vertex shadow)"<< std::endl
          << " q, <esc>: Quit" << std::endl << std::endl;
 }
 
@@ -117,12 +120,12 @@ void init (const char * modelFilename) {
 
 		//8 light sources maximum
 		lightSources.resize(8);
-		lightSources[0] = LightSource(Vec3f(1.0f, 1.0f, 1.0f), Vec3f(1.0f, 0.9f, 0.8f));
+		lightSources[0] = LightSource(Vec3f(0.0f, 1.0f, 1.0f), Vec3f(4.0f, 2.0f, 3.0f));
 		lightSources[0].activeLightSource();
-		lightSources[1] = LightSource(Vec3f(-2.0f, -1.0f, -1.0f), Vec3f(1.0f, 0.8f, 1.0f));
-		lightSources[1].activeLightSource();
-		lightSources[2] = LightSource(Vec3f(0.0f, 1.0f, 1.0f), Vec3f(1.0f, 0.0f, 0.0f));
-		lightSources[2].activeLightSource();
+		//lightSources[1] = LightSource(Vec3f(1.0f, 1.0f, 1.0f), Vec3f(1.0f, 0.9f, 0.8f));
+		//lightSources[1].activeLightSource();
+		//lightSources[2] = LightSource(Vec3f(-2.0f, -1.0f, -1.0f), Vec3f(1.0f, 0.8f, 1.0f));
+		//lightSources[2].activeLightSource();
 }
 
 float G1Schlick(Vec3f w, Vec3f n){
@@ -191,6 +194,10 @@ void updatePerVertexColorResponse () {
 		}
 }
 
+void computePerVertexShadow(){
+	//TODO
+}
+
 void renderScene () {
     //updatePerVertexColorResponse ();
 
@@ -227,6 +234,10 @@ void renderScene () {
 		glProgram->setUniform1i("microFacet", microFacet);
 		glProgram->setUniform1i("ggx", ggx);
 		glProgram->setUniform1i("schlick", schlick);
+
+		if(perVertexShadow == true){
+			//TODO
+		}
 
     glVertexPointer (3, GL_FLOAT, sizeof (Vec3f), (GLvoid*)(&(mesh.positions()[0])));
     glNormalPointer (GL_FLOAT, 3*sizeof (float), (GLvoid*)&(mesh.normals()[0]));
@@ -311,6 +322,9 @@ void key (unsigned char keyPressed, int x, int y) {
 				F0 = max((F0 - F0Speed), 0.0f);
 				glProgram->setUniform1f("F0", F0);
 				break;
+		case 's':
+				perVertexShadow = ! perVertexShadow;
+				break;
     default:
         printUsage ();
         break;
@@ -325,10 +339,10 @@ void specialKey(GLint key, GLint x, GLint y){
         case GLUT_KEY_DOWN:
             break;
         case GLUT_KEY_LEFT:
-						lightSources[2].moveXBy(-lightMoveSpeed);
+						lightSources[0].moveXBy(-lightMoveSpeed);
             break;
         case GLUT_KEY_RIGHT:
-						lightSources[2].moveXBy(lightMoveSpeed);
+						lightSources[0].moveXBy(lightMoveSpeed);
             break;
         default:
             break;
