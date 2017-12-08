@@ -28,7 +28,7 @@ bool Ray::isIntersected(Mesh mesh) const {
 
     // ray and triangle are parallel if det is close to 0
     if (fabs(det) < epsilon) continue;
-    
+
     float invDet = 1.0 / det;
 
     Vec3f tvec = origin - v0;
@@ -46,6 +46,6 @@ bool Ray::isIntersected(Mesh mesh) const {
       break;
     }
   }
-  if(intersected == false) return false;
-  else return true;
+  
+  return intersected;
 }

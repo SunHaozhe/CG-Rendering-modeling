@@ -1,12 +1,12 @@
 // --------------------------------------------------------------------------
 // Copyright(C) 2009-2016
 // Tamy Boubekeur
-// 
-// Permission granted to use this code only for teaching projects and 
+//
+// Permission granted to use this code only for teaching projects and
 // private practice.
 //
-// Do not distribute this code outside the teaching assignements.                                                                           
-// All rights reserved.                                                       
+// Do not distribute this code outside the teaching assignements.
+// All rights reserved.
 // --------------------------------------------------------------------------
 
 #pragma once
@@ -25,7 +25,7 @@ public:
     inline const std::vector<Vec3f> & positions () const { return m_positions; }
     inline  std::vector<Vec3f> & normals () { return m_normals; }
     inline const std::vector<Vec3f> & normals () const { return m_normals; }
-    inline std::vector<Triangle> triangles () { return m_triangles; }
+    inline std::vector<Triangle> & triangles () { return m_triangles; }
     inline const std::vector<Triangle> & triangles () const { return m_triangles; }
 
     /// Empty the positions, normals and triangles arrays.
@@ -33,7 +33,7 @@ public:
 
 	/// Loads the mesh from a <file>.off
 	void loadOFF (const std::string & filename);
-    
+
     /// Compute smooth per-vertex normals
     void recomputeNormals ();
 

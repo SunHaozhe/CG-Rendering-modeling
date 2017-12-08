@@ -375,6 +375,44 @@ void idle () {
     glutPostRedisplay ();
 }
 
+void addPlane(){
+	//Parameters
+	unsigned int nb_per_row = 5;
+	float z = - 4.0f;
+	float l = 1.4f;   			//	l^2 = area of a square
+	float first_square_originX = - 4.0f;
+	float first_square_originY = - 4.0f;
+
+	unsigned int nb_squares_plane = nb_per_row * nb_per_row;
+
+	for(unsigned int k = 0; k < nb_squares_plane; k++){
+		unsigned int i = k / nb_per_row;    //row number
+		unsigned int j = k % nb_per_row;		//column number
+		float originX = first_square_originX + j * l;
+		float originY = first_square_originY + i * l;
+
+		Vec3f p0 = Vec3f(originX, originY, z);
+		Vec3f p1 = Vec3f(originX, originY + l, z);
+		Vec3f p2 = Vec3f(originX + l, originY, z);
+		mesh.positions().push_back(p0);
+		mesh.positions().push_back(p1);
+		mesh.positions().push_back(p2);
+		unsigned int positions_size = mesh.positions().size();
+		mesh.triangles().push_back( Triangle(positions_size - 1 , positions_size - 2, positions_size - 3) );
+
+		Vec3f p3 = Vec3f(originX + l, originY + l, z);
+		Vec3f p4 = Vec3f(originX + l, originY, z);
+		Vec3f p5 = Vec3f(originX, originY + l, z);
+		mesh.positions().push_back(p3);
+		mesh.positions().push_back(p4);
+		mesh.positions().push_back(p5);
+		positions_size = mesh.positions().size();
+		mesh.triangles().push_back( Triangle(positions_size - 1 , positions_size - 2, positions_size - 3) );
+	}
+
+	mesh.recomputeNormals();
+}
+
 int main (int argc, char ** argv) {
     if (argc > 2) {
         printUsage ();
@@ -385,6 +423,9 @@ int main (int argc, char ** argv) {
     glutInitWindowSize (DEFAULT_SCREENWIDTH, DEFAULT_SCREENHEIGHT);
     window = glutCreateWindow (appTitle.c_str ());
     init (argc == 2 ? argv[1] : DEFAULT_MESH_FILE.c_str ());
+
+		addPlane();			//adds a plane
+
     glutIdleFunc (idle);
     glutReshapeFunc (reshape);
     glutDisplayFunc (display);
