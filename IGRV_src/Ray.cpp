@@ -8,7 +8,7 @@ using namespace std;
 //https://www.scratchapixel.com/code.php?id=13&origin=/lessons/3d-basic-rendering/introduction-to-shading
 //http://www.lighthouse3d.com/tutorials/maths/ray-triangle-intersection/
 
-bool Ray::isIntersected(Mesh mesh) const {
+bool Ray::isIntersected(const Mesh& mesh) const {
   float epsilon = 0.0001;
   bool intersected = false;
 
@@ -46,6 +46,6 @@ bool Ray::isIntersected(Mesh mesh) const {
       break;
     }
   }
-  
+
   return intersected;
 }

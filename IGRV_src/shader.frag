@@ -31,6 +31,7 @@ uniform float F0;						//Fresnel refraction index, dependent on material
 uniform bool microFacet;		//Blinn-Phong BRDF / micro facet BRDF
 uniform bool ggx;					//Cook-Torrance micro facet BRDF / GGX micro facet BRDF
 uniform bool schlick;			//Approximation of Schlick for GGX micro facet BRDF
+uniform bool perVertexShadow;
 
 varying vec4 P; // Interpolated fragment-wise position
 varying vec3 N; // Interpolated fragment-wise normal
@@ -73,27 +74,31 @@ float microFacetFs(vec3 n, vec3 wi, vec3 wo, vec3 wh){
 
 void main (void) {
 
-    vec3 x = vec3 (gl_ModelViewMatrix * P);       //x
-    vec3 n = normalize (gl_NormalMatrix * N);     //n
-    vec3 wo = normalize (-x);                      //wo
-    vec3 color = vec3(0.0, 0.0, 0.0);
+		if(perVertexShadow == true && C.a == 0.0){
+			gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+		}else{
+			vec3 x = vec3 (gl_ModelViewMatrix * P);       //x
+			vec3 n = normalize (gl_NormalMatrix * N);     //n
+			vec3 wo = normalize (-x);                      //wo
+			vec3 color = vec3(0.0, 0.0, 0.0);
 
-    for(int i = 0; i < numberOfLightActive; i++){
-      vec3 wi = normalize (lightPositions[i] - x);            //wi
-      vec3 wh = normalize (wi + wo);                          //wh
+			for(int i = 0; i < numberOfLightActive; i++){
+				vec3 wi = normalize (lightPositions[i] - x);            //wi
+				vec3 wh = normalize (wi + wo);                          //wh
 
-      float d = length(lightPositions[i] - x);
-      float attenuation = 1.0 / (ac + al * d + aq * d * d);
-      vec3 Li = lightColors[i];
-      float fs;
+				float d = length(lightPositions[i] - x);
+				float attenuation = 1.0 / (ac + al * d + aq * d * d);
+				vec3 Li = lightColors[i];
+				float fs;
 
-      if(microFacet == false) fs = ks * pow(dot(n, wh), s);						//Blinn-Phong BRDF (specular)
-      else fs = microFacetFs(n, wi, wo, wh);
+				if(microFacet == false) fs = ks * pow(dot(n, wh), s);						//Blinn-Phong BRDF (specular)
+				else fs = microFacetFs(n, wi, wo, wh);
 
-      float f = fd + fs;
+				float f = fd + fs;
 
-      color += Li * f * max(dot(n, wi), 0.0) * attenuation;
-    }
+				color += Li * f * max(dot(n, wi), 0.0) * attenuation;
 
-    gl_FragColor = vec4(color, 1.0);
+				gl_FragColor = vec4(color, 1.0);
+		}
+		}
 }

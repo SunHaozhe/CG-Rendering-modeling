@@ -9,5 +9,5 @@ class Ray{
     Ray(){}
     Ray(Vec3f origin, Vec3f direction): origin(origin), direction(direction){}
     ~Ray(){}
-    bool isIntersected(Mesh mesh) const;
+    bool isIntersected(const Mesh& mesh) const;
 };

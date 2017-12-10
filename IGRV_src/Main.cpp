@@ -26,12 +26,13 @@
 #include "Exception.h"
 #include "LightSource.h"
 #include "Ray.h"
+#include "Vec4.h"
 
 using namespace std;
 
 static const unsigned int DEFAULT_SCREENWIDTH = 1024;
 static const unsigned int DEFAULT_SCREENHEIGHT = 768;
-static const string DEFAULT_MESH_FILE ("models/man.off");
+static const string DEFAULT_MESH_FILE ("models/monkey.off");
 
 static const string appTitle ("Informatique Graphique & Realite Virtuelle - Travaux Pratiques - Algorithmes de Rendu");
 static const string myName ("Haozhe Sun");
@@ -43,7 +44,8 @@ static Camera camera;
 static Mesh mesh;
 GLProgram * glProgram;
 
-static std::vector<Vec3f> colorResponses; // Cached per-vertex color response, updated at each frame
+//static std::vector<Vec3f> colorResponses;
+static std::vector<Vec4f> colorResponses;		// Cached per-vertex color response, updated at each frame
 static std::vector<LightSource> lightSources;
 
 //speeds of interactions
@@ -61,7 +63,8 @@ static float F0 = 0.5f;						//Fresnel refraction index, dependent on material
 static bool microFacet = false;		//Blinn-Phong BRDF / micro facet BRDF
 static bool ggx = false;					//Cook-Torrance micro facet BRDF / GGX micro facet BRDF
 static bool schlick = false;			//Approximation of Schlick for GGX micro facet BRDF
-static bool perVertexShadow = false;
+static bool perVertexShadow = true;  //Shadow mode (true by default)
+static bool renderShadowOnlyInInit = true;  //Render shadow only in the beginning of the program or in every frame ( calls of function renderScene() )
 
 //coefficients for attenuation, aq the coefficient for d^2, al the coefficient for d, ac the constant coefficient, where d means the distance between the vertex and the light source
 static const float ac = 0;
@@ -94,6 +97,59 @@ void printUsage () {
          << " q, <esc>: Quit" << std::endl << std::endl;
 }
 
+void addPlane(Mesh & mesh){
+	//Parameters
+	unsigned int nb_per_row = 22;
+	float z = - 2.0f;				//  offset XY-plane
+	float l = 0.125f;   			//	l^2 = area of a square
+	float first_square_originX = - 1.4f;
+	float first_square_originY = - 1.6f;
+
+	unsigned int nb_squares_plane = nb_per_row * nb_per_row;
+
+	unsigned int first_index =  mesh.positions().size();
+	for(unsigned int i = 0; i <= nb_per_row; i++){
+		for(unsigned int j = 0; j <= nb_per_row; j++){
+			mesh.positions().push_back( Vec3f(first_square_originX + j * l, first_square_originY + i * l, z) );
+		}
+	}
+
+	for(unsigned int k = 0; k < nb_squares_plane; k++){
+		unsigned int i = k / nb_per_row;    //row number
+		unsigned int j = k % nb_per_row;		//column number
+		unsigned int index0 = first_index + i * (nb_per_row + 1) + j;
+		unsigned int index1 = first_index + (i + 1) * (nb_per_row + 1) + j;
+		unsigned int index2 = first_index + (i + 1) * (nb_per_row + 1) + j + 1;
+		unsigned int index3 = first_index + i * (nb_per_row + 1) + j + 1;
+
+		mesh.triangles().push_back( Triangle(index3, index1, index0) );
+		mesh.triangles().push_back( Triangle(index3, index2, index1) );
+	}
+
+	mesh.recomputeNormals();
+}
+
+void computePerVertexShadow(const Mesh& mesh){
+	unsigned int ls_size = 1;
+	unsigned int mesh_size = mesh.positions().size();
+	//loop on light sources
+	for(unsigned int k = 0; k < ls_size; k++){
+		Vec3f lightPosition = lightSources[k].getPosition();
+		//loop on triangles of the mesh
+		for(unsigned int i = 0; i < mesh_size; i++){
+			Vec3f origin = mesh.positions()[i];
+	    Vec3f direction = (lightPosition - origin);
+			direction.normalize();
+			Ray ray(origin + direction * 0.01f, direction);
+			if( ray.isIntersected(mesh) ){
+				colorResponses[i][3] = 0.0f;
+			}else{
+				colorResponses[i][3] = 1.0f;
+			}
+		}
+	}
+}
+
 void init (const char * modelFilename) {
     glewExperimental = GL_TRUE;
     glewInit (); // init glew, which takes in charges the modern OpenGL calls (v>1.2, shaders, etc)
@@ -105,27 +161,34 @@ void init (const char * modelFilename) {
     glEnableClientState (GL_NORMAL_ARRAY);
     glEnableClientState (GL_COLOR_ARRAY);
     glEnable (GL_NORMALIZE);
-	glLineWidth (2.0); // Set the width of edges in GL_LINE polygon mode
+		glLineWidth (2.0); // Set the width of edges in GL_LINE polygon mode
     glClearColor (0.0f, 0.0f, 0.0f, 1.0f); // Background color
-	mesh.loadOFF (modelFilename);
-    colorResponses.resize (mesh.positions ().size ());
+
+		mesh.loadOFF (modelFilename);
+		addPlane(mesh);			//adds a plane
+    colorResponses.resize (mesh.positions().size());
     camera.resize (DEFAULT_SCREENWIDTH, DEFAULT_SCREENHEIGHT);
+
     try {
         glProgram = GLProgram::genVFProgram ("Simple GL Program", "shader.vert", "shader.frag"); // Load and compile pair of shaders
         glProgram->use (); // Activate the shader program
-
     } catch (Exception & e) {
         cerr << e.msg () << endl;
     }
 
 		//8 light sources maximum
 		lightSources.resize(8);
-		lightSources[0] = LightSource(Vec3f(0.0f, 1.0f, 1.0f), Vec3f(4.0f, 2.0f, 3.0f));
+		lightSources[0] = LightSource(Vec3f(0.0f, 0.0f, 2.0f), Vec3f(4.0f, 2.0f, 3.0f));
 		lightSources[0].activeLightSource();
 		//lightSources[1] = LightSource(Vec3f(1.0f, 1.0f, 1.0f), Vec3f(1.0f, 0.9f, 0.8f));
 		//lightSources[1].activeLightSource();
 		//lightSources[2] = LightSource(Vec3f(-2.0f, -1.0f, -1.0f), Vec3f(1.0f, 0.8f, 1.0f));
 		//lightSources[2].activeLightSource();
+
+		if(renderShadowOnlyInInit == true){
+			if(perVertexShadow == true) computePerVertexShadow(mesh);
+		}
+
 }
 
 float G1Schlick(Vec3f w, Vec3f n){
@@ -165,6 +228,8 @@ float microFacetFs(Vec3f n, Vec3f wi, Vec3f wo, Vec3f wh){
 }
 
 // the following color response shall be replaced with a proper reflectance evaluation/shadow test/etc.
+//	This function is not compatible with shadow mode
+/*
 void updatePerVertexColorResponse () {
     for (unsigned int i = 0; i < colorResponses.size (); i++){
         colorResponses[i] = Vec3f (0.f, 0.f, 0.f);
@@ -193,10 +258,7 @@ void updatePerVertexColorResponse () {
 				}
 		}
 }
-
-void computePerVertexShadow(){
-	//TODO
-}
+*/
 
 void renderScene () {
     //updatePerVertexColorResponse ();
@@ -234,14 +296,16 @@ void renderScene () {
 		glProgram->setUniform1i("microFacet", microFacet);
 		glProgram->setUniform1i("ggx", ggx);
 		glProgram->setUniform1i("schlick", schlick);
+		glProgram->setUniform1i("perVertexShadow", perVertexShadow);
 
-		if(perVertexShadow == true){
-			//TODO
+		if(renderShadowOnlyInInit == false){
+			if(perVertexShadow == true) computePerVertexShadow(mesh);
 		}
 
     glVertexPointer (3, GL_FLOAT, sizeof (Vec3f), (GLvoid*)(&(mesh.positions()[0])));
     glNormalPointer (GL_FLOAT, 3*sizeof (float), (GLvoid*)&(mesh.normals()[0]));
-    glColorPointer (3, GL_FLOAT, sizeof (Vec3f), (GLvoid*)(&(colorResponses[0])));
+    //glColorPointer (3, GL_FLOAT, sizeof (Vec3f), (GLvoid*)(&(colorResponses[0])));
+		glColorPointer (4, GL_FLOAT, sizeof (Vec4f), (GLvoid*)(&(colorResponses[0])));
     glDrawElements (GL_TRIANGLES, 3*mesh.triangles().size(), GL_UNSIGNED_INT, (GLvoid*)((&mesh.triangles()[0])));
 }
 
@@ -375,43 +439,7 @@ void idle () {
     glutPostRedisplay ();
 }
 
-void addPlane(){
-	//Parameters
-	unsigned int nb_per_row = 5;
-	float z = - 4.0f;
-	float l = 1.4f;   			//	l^2 = area of a square
-	float first_square_originX = - 4.0f;
-	float first_square_originY = - 4.0f;
 
-	unsigned int nb_squares_plane = nb_per_row * nb_per_row;
-
-	for(unsigned int k = 0; k < nb_squares_plane; k++){
-		unsigned int i = k / nb_per_row;    //row number
-		unsigned int j = k % nb_per_row;		//column number
-		float originX = first_square_originX + j * l;
-		float originY = first_square_originY + i * l;
-
-		Vec3f p0 = Vec3f(originX, originY, z);
-		Vec3f p1 = Vec3f(originX, originY + l, z);
-		Vec3f p2 = Vec3f(originX + l, originY, z);
-		mesh.positions().push_back(p0);
-		mesh.positions().push_back(p1);
-		mesh.positions().push_back(p2);
-		unsigned int positions_size = mesh.positions().size();
-		mesh.triangles().push_back( Triangle(positions_size - 1 , positions_size - 2, positions_size - 3) );
-
-		Vec3f p3 = Vec3f(originX + l, originY + l, z);
-		Vec3f p4 = Vec3f(originX + l, originY, z);
-		Vec3f p5 = Vec3f(originX, originY + l, z);
-		mesh.positions().push_back(p3);
-		mesh.positions().push_back(p4);
-		mesh.positions().push_back(p5);
-		positions_size = mesh.positions().size();
-		mesh.triangles().push_back( Triangle(positions_size - 1 , positions_size - 2, positions_size - 3) );
-	}
-
-	mesh.recomputeNormals();
-}
 
 int main (int argc, char ** argv) {
     if (argc > 2) {
@@ -423,9 +451,6 @@ int main (int argc, char ** argv) {
     glutInitWindowSize (DEFAULT_SCREENWIDTH, DEFAULT_SCREENHEIGHT);
     window = glutCreateWindow (appTitle.c_str ());
     init (argc == 2 ? argv[1] : DEFAULT_MESH_FILE.c_str ());
-
-		addPlane();			//adds a plane
-
     glutIdleFunc (idle);
     glutReshapeFunc (reshape);
     glutDisplayFunc (display);
