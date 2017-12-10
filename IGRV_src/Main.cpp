@@ -18,6 +18,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <cmath>
+#include <time.h>
 
 #include "Vec3.h"
 #include "Camera.h"
@@ -60,11 +61,15 @@ static float s = 1;               //shininess
 static float alpha = 0.5f;         //roughness
 static float F0 = 0.5f;						//Fresnel refraction index, dependent on material
 
+static int nb_samples_AO = 5;		 //number of sample of rays in one point when calculating AO
+static float radius_AO = 1.0f;   //radius of rays when calculating AO
+
 static bool microFacet = false;		//Blinn-Phong BRDF / micro facet BRDF
 static bool ggx = false;					//Cook-Torrance micro facet BRDF / GGX micro facet BRDF
 static bool schlick = false;			//Approximation of Schlick for GGX micro facet BRDF
 static bool perVertexShadow = true;  //Shadow mode (true by default)
 static bool renderShadowOnlyInInit = true;  //Render shadow only in the beginning of the program or in every frame ( calls of function renderScene() )
+static bool perVertexAO = true;     //Ambient occlusion mode (true by default)
 
 //coefficients for attenuation, aq the coefficient for d^2, al the coefficient for d, ac the constant coefficient, where d means the distance between the vertex and the light source
 static const float ac = 0;
@@ -94,6 +99,7 @@ void printUsage () {
 				 << " <y>: increase Fresnel refraction index F0 for micro facet mode"<< std::endl
 				 << " <u>: decrease Fresnel refraction index F0 for micro facet mode"<< std::endl
 				 << " <s>: active shadow mode (per vertex shadow)"<< std::endl
+				 << " <o>: active Ambient occlusion mode (per vertex AO)"<< std::endl
          << " q, <esc>: Quit" << std::endl << std::endl;
 }
 
@@ -129,6 +135,33 @@ void addPlane(Mesh & mesh){
 	mesh.recomputeNormals();
 }
 
+void computePerVertexAO (unsigned int numOfSamples, float radius, const Mesh& mesh){
+	srand((unsigned)time(NULL));
+	unsigned int mesh_size = mesh.positions().size();
+	for(unsigned int i = 0; i < mesh_size; i++){
+		Vec3f p = mesh.positions()[i];
+		Vec3f n = mesh.normals()[i];
+		float mark = 0.0f;
+
+		for(int k = 0; k < numOfSamples; k++){
+			float random_variable1 = (unsigned int)rand() / (RAND_MAX + 1);
+			float random_variable2 = (unsigned int)rand() / (RAND_MAX + 1);
+			float random_variable3 = (unsigned int)rand() / (RAND_MAX + 1);
+			Vec3f direction = Vec3f(random_variable1, random_variable2, random_variable3);
+			if(dot(direction, n) < 0){
+				k--;
+				continue;
+			}
+			direction.normalize();
+			direction = direction * radius;
+			Ray ray(p, direction);
+			if( ! ray.isIntersected(mesh) ) mark += 1.0f;
+		}
+
+		colorResponses[i][3] *= (float)(mark / numOfSamples);
+	}
+}
+
 void computePerVertexShadow(const Mesh& mesh){
 	unsigned int ls_size = 1;
 	unsigned int mesh_size = mesh.positions().size();
@@ -138,13 +171,13 @@ void computePerVertexShadow(const Mesh& mesh){
 		//loop on triangles of the mesh
 		for(unsigned int i = 0; i < mesh_size; i++){
 			Vec3f origin = mesh.positions()[i];
-	    Vec3f direction = (lightPosition - origin);
-			direction.normalize();
+	    Vec3f direction = lightPosition - origin;
+			//direction.normalize();
 			Ray ray(origin + direction * 0.01f, direction);
 			if( ray.isIntersected(mesh) ){
-				colorResponses[i][3] = 0.0f;
+				colorResponses[i][3] *= - 1.0f;
 			}else{
-				colorResponses[i][3] = 1.0f;
+				colorResponses[i][3] *= 1.0f;
 			}
 		}
 	}
@@ -186,6 +219,11 @@ void init (const char * modelFilename) {
 		//lightSources[2].activeLightSource();
 
 		if(renderShadowOnlyInInit == true){
+			unsigned int mesh_size = mesh.positions().size();
+			for(unsigned int i = 0; i < mesh_size; i++){
+				colorResponses[i][3] = 1.0f;     //initialize all colorResponses[i][3]
+			}
+			if(perVertexAO == true) computePerVertexAO(nb_samples_AO, radius_AO, mesh);
 			if(perVertexShadow == true) computePerVertexShadow(mesh);
 		}
 
@@ -299,6 +337,11 @@ void renderScene () {
 		glProgram->setUniform1i("perVertexShadow", perVertexShadow);
 
 		if(renderShadowOnlyInInit == false){
+			unsigned int mesh_size = mesh.positions().size();
+			for(unsigned int i = 0; i < mesh_size; i++){
+				colorResponses[i][3] = 1.0f;     //initialize all colorResponses[i][3]
+			}
+			if(perVertexAO == true) computePerVertexAO(nb_samples_AO, radius_AO, mesh);
 			if(perVertexShadow == true) computePerVertexShadow(mesh);
 		}
 
@@ -388,6 +431,9 @@ void key (unsigned char keyPressed, int x, int y) {
 				break;
 		case 's':
 				perVertexShadow = ! perVertexShadow;
+				break;
+		case 'o':
+				perVertexAO = ! perVertexAO;
 				break;
     default:
         printUsage ();

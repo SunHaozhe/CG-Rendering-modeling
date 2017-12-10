@@ -17,6 +17,7 @@ uniform int numberOfLightActive;
 
 const vec3 matAlbedo = vec3 (0.6, 0.6, 0.6);
 const float pi = 3.1415927;
+const float ambient_coefficient = 0.15;
 
 uniform float ac;
 uniform float al;
@@ -74,7 +75,7 @@ float microFacetFs(vec3 n, vec3 wi, vec3 wo, vec3 wh){
 
 void main (void) {
 
-		if(perVertexShadow == true && C.a == 0.0){
+		if(perVertexShadow == true && C.a < 0.0){
 			gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
 		}else{
 			vec3 x = vec3 (gl_ModelViewMatrix * P);       //x
@@ -97,8 +98,10 @@ void main (void) {
 				float f = fd + fs;
 
 				color += Li * f * max(dot(n, wi), 0.0) * attenuation;
-
-				gl_FragColor = vec4(color, 1.0);
 		}
+		if(C.a != 1.0){
+			color = color * C.a * ambient_coefficient;
 		}
+		gl_FragColor = vec4(color, 1.0);
+	}
 }
