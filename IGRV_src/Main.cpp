@@ -54,15 +54,15 @@ static float lightMoveSpeed = 0.5f;
 static float alphaSpeed = 0.02f;
 static float F0Speed = 0.01f;
 
-static float kd = M_PI;           //coefficient diffusion
-static float ks = 1;							//coefficient specular
-static float fd = kd / M_PI; 			//Lambert BRDF (diffusion)
-static float s = 1;               //shininess
+//static float kd = M_PI;           //coefficient diffusion
+//static float ks = 1;							//coefficient specular
+//static float fd = kd / M_PI; 			//Lambert BRDF (diffusion)
+//static float s = 1;               //shininess
 static float alpha = 0.5f;         //roughness
 static float F0 = 0.5f;						//Fresnel refraction index, dependent on material
 
-static int nb_samples_AO = 5;		 //number of sample of rays in one point when calculating AO
-static float radius_AO = 1.0f;   //radius of rays when calculating AO
+static int nb_samples_AO = 3;		 //number of sample of rays in one point when calculating AO
+static float radius_AO = 0.00001f;   //radius of rays when calculating AO
 
 static bool microFacet = false;		//Blinn-Phong BRDF / micro facet BRDF
 static bool ggx = false;					//Cook-Torrance micro facet BRDF / GGX micro facet BRDF
@@ -72,9 +72,9 @@ static bool renderShadowOnlyInInit = true;  //Render shadow only in the beginnin
 static bool perVertexAO = true;     //Ambient occlusion mode (true by default)
 
 //coefficients for attenuation, aq the coefficient for d^2, al the coefficient for d, ac the constant coefficient, where d means the distance between the vertex and the light source
-static const float ac = 0;
-static const float al = 1;
-static const float aq = 0;
+//static const float ac = 0;
+//static const float al = 1;
+//static const float aq = 0;
 
 void printUsage () {
 	std::cerr << std::endl<< appTitle << std::endl
@@ -142,22 +142,20 @@ void computePerVertexAO (unsigned int numOfSamples, float radius, const Mesh& me
 		Vec3f p = mesh.positions()[i];
 		Vec3f n = mesh.normals()[i];
 		float mark = 0.0f;
-
-		for(int k = 0; k < numOfSamples; k++){
-			float random_variable1 = (unsigned int)rand() / (RAND_MAX + 1);
-			float random_variable2 = (unsigned int)rand() / (RAND_MAX + 1);
-			float random_variable3 = (unsigned int)rand() / (RAND_MAX + 1);
+		unsigned int k = 0;
+		while(true){
+			float random_variable1 = (float)rand() / (RAND_MAX);
+			float random_variable2 = (float)rand() / (RAND_MAX);
+			float random_variable3 = (float)rand() / (RAND_MAX);
 			Vec3f direction = Vec3f(random_variable1, random_variable2, random_variable3);
-			if(dot(direction, n) < 0){
-				k--;
-				continue;
-			}
+			//if(  dot(direction, n) < 0.0f ) continue;
+			k++;
 			direction.normalize();
 			direction = direction * radius;
 			Ray ray(p, direction);
 			if( ! ray.isIntersected(mesh) ) mark += 1.0f;
+			if(k == numOfSamples) break;
 		}
-
 		colorResponses[i][3] *= (float)(mark / numOfSamples);
 	}
 }
@@ -323,18 +321,19 @@ void renderScene () {
 		glUniform3fv (variableLocationCol, nb_light_active, lightCol);
 		glProgram->setUniform1i("numberOfLightActive", nb_light_active);
 
-		glProgram->setUniform1f("ac", ac);
-		glProgram->setUniform1f("al", al);
-		glProgram->setUniform1f("aq", aq);
-		glProgram->setUniform1f("ks", ks);
-		glProgram->setUniform1f("fd", fd);
-		glProgram->setUniform1f("s", s);
+		//glProgram->setUniform1f("ac", ac);
+		//glProgram->setUniform1f("al", al);
+		//glProgram->setUniform1f("aq", aq);
+		//glProgram->setUniform1f("ks", ks);
+		//glProgram->setUniform1f("fd", fd);
+		//glProgram->setUniform1f("s", s);
 		glProgram->setUniform1f("alpha", alpha);
 		glProgram->setUniform1f("F0", F0);
 		glProgram->setUniform1i("microFacet", microFacet);
 		glProgram->setUniform1i("ggx", ggx);
 		glProgram->setUniform1i("schlick", schlick);
 		glProgram->setUniform1i("perVertexShadow", perVertexShadow);
+		glProgram->setUniform1i("perVertexAO", perVertexAO);
 
 		if(renderShadowOnlyInInit == false){
 			unsigned int mesh_size = mesh.positions().size();

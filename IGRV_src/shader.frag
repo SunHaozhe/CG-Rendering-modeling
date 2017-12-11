@@ -17,15 +17,18 @@ uniform int numberOfLightActive;
 
 const vec3 matAlbedo = vec3 (0.6, 0.6, 0.6);
 const float pi = 3.1415927;
-const float ambient_coefficient = 0.15;
+const float ambient_lighting_coefficient = 0.15;
 
-uniform float ac;
-uniform float al;
-uniform float aq;
+//coefficients for attenuation, aq the coefficient for d^2, al the coefficient for d, ac the constant coefficient, where d means the distance between the vertex and the light source
+const float ac = 0.0;
+const float al = 1.0;
+const float aq = 0.0;
 
-uniform float ks;							//coefficient specular
-uniform float fd; 			//Lambert BRDF (diffusion)
-uniform float s;               //shininess
+const float ks = 1.0;							//coefficient specular
+const float kd = pi;           //coefficient diffusion
+const float fd = kd / pi; 		//Lambert BRDF (diffusion); 			//Lambert BRDF (diffusion)
+const float s = 1.0;               //shininess
+
 uniform float alpha;         //roughness
 uniform float F0;						//Fresnel refraction index, dependent on material
 
@@ -33,6 +36,7 @@ uniform bool microFacet;		//Blinn-Phong BRDF / micro facet BRDF
 uniform bool ggx;					//Cook-Torrance micro facet BRDF / GGX micro facet BRDF
 uniform bool schlick;			//Approximation of Schlick for GGX micro facet BRDF
 uniform bool perVertexShadow;
+uniform bool perVertexAO;
 
 varying vec4 P; // Interpolated fragment-wise position
 varying vec3 N; // Interpolated fragment-wise normal
@@ -73,35 +77,46 @@ float microFacetFs(vec3 n, vec3 wi, vec3 wo, vec3 wh){
 	}
 }
 
+vec3 calculateColor(){
+	vec3 x = vec3 (gl_ModelViewMatrix * P);       //x
+	vec3 n = normalize (gl_NormalMatrix * N);     //n
+	vec3 wo = normalize (-x);                      //wo
+	vec3 color = vec3(0.0, 0.0, 0.0);
+
+	for(int i = 0; i < numberOfLightActive; i++){
+		vec3 wi = normalize (lightPositions[i] - x);            //wi
+		vec3 wh = normalize (wi + wo);                          //wh
+
+		float d = length(lightPositions[i] - x);
+		float attenuation = 1.0 / (ac + al * d + aq * d * d);
+		vec3 Li = lightColors[i];
+		float fs;
+
+		if(microFacet == false) fs = ks * pow(dot(n, wh), s);						//Blinn-Phong BRDF (specular)
+		else fs = microFacetFs(n, wi, wo, wh);
+
+		float f = fd + fs;
+
+		color += Li * f * max(dot(n, wi), 0.0) * attenuation;
+		}
+	return color;
+}
+
 void main (void) {
-
-		if(perVertexShadow == true && C.a < 0.0){
-			gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-		}else{
-			vec3 x = vec3 (gl_ModelViewMatrix * P);       //x
-			vec3 n = normalize (gl_NormalMatrix * N);     //n
-			vec3 wo = normalize (-x);                      //wo
-			vec3 color = vec3(0.0, 0.0, 0.0);
-
-			for(int i = 0; i < numberOfLightActive; i++){
-				vec3 wi = normalize (lightPositions[i] - x);            //wi
-				vec3 wh = normalize (wi + wo);                          //wh
-
-				float d = length(lightPositions[i] - x);
-				float attenuation = 1.0 / (ac + al * d + aq * d * d);
-				vec3 Li = lightColors[i];
-				float fs;
-
-				if(microFacet == false) fs = ks * pow(dot(n, wh), s);						//Blinn-Phong BRDF (specular)
-				else fs = microFacetFs(n, wi, wo, wh);
-
-				float f = fd + fs;
-
-				color += Li * f * max(dot(n, wi), 0.0) * attenuation;
-		}
-		if(C.a != 1.0){
-			color = color * C.a * ambient_coefficient;
-		}
-		gl_FragColor = vec4(color, 1.0);
+	vec3 color = vec3(0.0, 0.0, 0.0);
+	if(perVertexShadow == true && perVertexAO == false){
+				if(C.a >= 0.0) 	color = calculateColor();
+	}else if(perVertexShadow == false && perVertexAO == false){
+				color = calculateColor();
+	}else if(perVertexShadow == true && perVertexAO == true){
+				if(C.a >= 0.0){
+					color = calculateColor();
+					if( C.a < 1.0 && C.a > 0.0 ) color = color * ambient_lighting_coefficient * abs(C.a);
+				}
+	}else if(perVertexShadow == false && perVertexAO == true){
+				color = calculateColor();
+				if( C.a < 1.0 && C.a > 0.0 ) color = color * ambient_lighting_coefficient * abs(C.a);
 	}
+
+	gl_FragColor = vec4(color, 1.0);
 }
