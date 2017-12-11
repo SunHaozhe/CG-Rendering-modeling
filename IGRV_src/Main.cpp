@@ -44,6 +44,7 @@ static bool fullScreen = false;
 static Camera camera;
 static Mesh mesh;
 GLProgram * glProgram;
+//GLProgram * toonProgram;
 
 //static std::vector<Vec3f> colorResponses;
 static std::vector<Vec4f> colorResponses;		// Cached per-vertex color response, updated at each frame
@@ -70,6 +71,7 @@ static bool schlick = false;			//Approximation of Schlick for GGX micro facet BR
 static bool perVertexShadow = true;  //Shadow mode (true by default)
 static bool renderShadowOnlyInInit = true;  //Render shadow only in the beginning of the program or in every frame ( calls of function renderScene() )
 static bool perVertexAO = true;     //Ambient occlusion mode (true by default)
+static bool cartoon_mode = false;   //cartoon mode
 
 //coefficients for attenuation, aq the coefficient for d^2, al the coefficient for d, ac the constant coefficient, where d means the distance between the vertex and the light source
 //static const float ac = 0;
@@ -100,6 +102,7 @@ void printUsage () {
 				 << " <u>: decrease Fresnel refraction index F0 for micro facet mode"<< std::endl
 				 << " <s>: active shadow mode (per vertex shadow)"<< std::endl
 				 << " <o>: active Ambient occlusion mode (per vertex AO)"<< std::endl
+				 << " <t>: active cartoon mode"<< std::endl
          << " q, <esc>: Quit" << std::endl << std::endl;
 }
 
@@ -202,7 +205,8 @@ void init (const char * modelFilename) {
 
     try {
         glProgram = GLProgram::genVFProgram ("Simple GL Program", "shader.vert", "shader.frag"); // Load and compile pair of shaders
-        glProgram->use (); // Activate the shader program
+				//toonProgram = GLProgram::genVFProgram ("Cartoon GL Program", "shader_cartoon.vert", "shader_cartoon.frag");
+				glProgram->use (); // Activate the shader program
     } catch (Exception & e) {
         cerr << e.msg () << endl;
     }
@@ -334,6 +338,8 @@ void renderScene () {
 		glProgram->setUniform1i("schlick", schlick);
 		glProgram->setUniform1i("perVertexShadow", perVertexShadow);
 		glProgram->setUniform1i("perVertexAO", perVertexAO);
+		glProgram->setUniform1i("cartoon_mode", cartoon_mode);
+
 
 		if(renderShadowOnlyInInit == false){
 			unsigned int mesh_size = mesh.positions().size();
@@ -433,6 +439,11 @@ void key (unsigned char keyPressed, int x, int y) {
 				break;
 		case 'o':
 				perVertexAO = ! perVertexAO;
+				break;
+		case 't':
+				cartoon_mode = ! cartoon_mode;
+				//if(cartoon_mode == false) toonProgram->use ();
+				//else glProgram->use ();
 				break;
     default:
         printUsage ();

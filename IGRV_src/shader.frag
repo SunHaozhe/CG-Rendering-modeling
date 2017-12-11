@@ -15,7 +15,7 @@ uniform vec3 lightPositions[8];
 uniform vec3 lightColors[8];
 uniform int numberOfLightActive;
 
-const vec3 matAlbedo = vec3 (0.6, 0.6, 0.6);
+const vec3 matAlbedo = vec3 (0.8, 0.2, 0.3);
 const float pi = 3.1415927;
 const float ambient_lighting_coefficient = 0.15;
 
@@ -37,6 +37,7 @@ uniform bool ggx;					//Cook-Torrance micro facet BRDF / GGX micro facet BRDF
 uniform bool schlick;			//Approximation of Schlick for GGX micro facet BRDF
 uniform bool perVertexShadow;
 uniform bool perVertexAO;
+uniform bool cartoon_mode;
 
 varying vec4 P; // Interpolated fragment-wise position
 varying vec3 N; // Interpolated fragment-wise normal
@@ -103,20 +104,35 @@ vec3 calculateColor(){
 }
 
 void main (void) {
-	vec3 color = vec3(0.0, 0.0, 0.0);
-	if(perVertexShadow == true && perVertexAO == false){
+	if(cartoon_mode == false){
+		vec3 color = vec3(0.0, 0.0, 0.0);
+		if(perVertexShadow == true && perVertexAO == false){
 				if(C.a >= 0.0) 	color = calculateColor();
-	}else if(perVertexShadow == false && perVertexAO == false){
+		}else if(perVertexShadow == false && perVertexAO == false){
 				color = calculateColor();
-	}else if(perVertexShadow == true && perVertexAO == true){
+		}else if(perVertexShadow == true && perVertexAO == true){
 				if(C.a >= 0.0){
 					color = calculateColor();
 					if( C.a < 1.0 && C.a > 0.0 ) color = color * ambient_lighting_coefficient * abs(C.a);
 				}
-	}else if(perVertexShadow == false && perVertexAO == true){
+		}else if(perVertexShadow == false && perVertexAO == true){
 				color = calculateColor();
 				if( C.a < 1.0 && C.a > 0.0 ) color = color * ambient_lighting_coefficient * abs(C.a);
-	}
+		}
 
-	gl_FragColor = vec4(color, 1.0);
+		gl_FragColor = vec4(color, 1.0);
+	}else{
+		vec3 x = vec3 (gl_ModelViewMatrix * P);       //x
+		vec3 n = normalize (gl_NormalMatrix * N);     //n
+		vec3 wo = normalize (-x);                      //wo
+		vec3 color = matAlbedo;
+		for(int i = 0; i < numberOfLightActive; i++){
+			vec3 wi = normalize (lightPositions[i] - x);            //wi
+			vec3 wh = normalize (wi + wo);                          //wh
+			if( dot(n, wh) >= 0.99 ) color = vec3(1.0, 1.0, 1.0);
+		}
+		if( abs(dot( n, wo )) <= 0.08 ) color = vec3(0.0, 0.0, 0.0);
+		gl_FragColor = vec4(color, 1.0);
+
+	}
 }
