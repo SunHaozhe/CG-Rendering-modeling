@@ -94,8 +94,8 @@ void printUsage () {
 				 << " <v>: Cook-Torrance micro facet mode for specular reflection"<< std::endl
 				 << " <b>: GGX micro facet mode (Smith) for specular reflection"<< std::endl
 				 << " <n>: GGX micro facet mode (approximation of Schlick) for specular reflection"<< std::endl
-				 << " <r>: increase roughness alpha for micro facet mode"<< std::endl
-				 << " <t>: decrease roughness alpha for micro facet mode"<< std::endl
+				 << " <j>: increase roughness alpha for micro facet mode"<< std::endl
+				 << " <k>: decrease roughness alpha for micro facet mode"<< std::endl
 				 << " <y>: increase Fresnel refraction index F0 for micro facet mode"<< std::endl
 				 << " <u>: decrease Fresnel refraction index F0 for micro facet mode"<< std::endl
 				 << " <s>: active shadow mode (per vertex shadow)"<< std::endl
@@ -411,11 +411,11 @@ void key (unsigned char keyPressed, int x, int y) {
 				glProgram->setUniform1i("schlick", schlick);
 				break;
 		//roughness
-		case 'r':
+		case 'j':
 				alpha = min((alpha + alphaSpeed), 1.0f);
 				glProgram->setUniform1f("alpha", alpha);
 				break;
-		case 't':
+		case 'k':
 				alpha = max((alpha - alphaSpeed), alphaSpeed);
 				glProgram->setUniform1f("alpha", alpha);
 				break;
