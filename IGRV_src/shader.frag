@@ -113,11 +113,11 @@ void main (void) {
 		}else if(perVertexShadow == true && perVertexAO == true){
 				if(C.a >= 0.0){
 					color = calculateColor();
-					if( C.a < 1.0 && C.a > 0.0 ) color = color * ambient_lighting_coefficient * abs(C.a);
+					if( C.a < 1.0 ) color = color * ambient_lighting_coefficient * abs(C.a);
 				}
 		}else if(perVertexShadow == false && perVertexAO == true){
 				color = calculateColor();
-				if( C.a < 1.0 && C.a > 0.0 ) color = color * ambient_lighting_coefficient * abs(C.a);
+				if( C.a < 1.0 ) color = color * ambient_lighting_coefficient * abs(C.a);
 		}
 
 		gl_FragColor = vec4(color, 1.0);

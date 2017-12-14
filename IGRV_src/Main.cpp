@@ -62,8 +62,8 @@ static float F0Speed = 0.01f;
 static float alpha = 0.5f;         //roughness
 static float F0 = 0.5f;						//Fresnel refraction index, dependent on material
 
-static int nb_samples_AO = 3;		 //number of sample of rays in one point when calculating AO
-static float radius_AO = 0.00001f;   //radius of rays when calculating AO
+static int nb_samples_AO = 10;		 //number of sample of rays in one point when calculating AO
+static float radius_AO = 0.001f;   //radius of rays when calculating AO
 
 static bool microFacet = false;		//Blinn-Phong BRDF / micro facet BRDF
 static bool ggx = false;					//Cook-Torrance micro facet BRDF / GGX micro facet BRDF
@@ -103,7 +103,7 @@ void printUsage () {
 				 << " <s>: active shadow mode (per vertex shadow)"<< std::endl
 				 << " <o>: active Ambient occlusion mode (per vertex AO)"<< std::endl
 				 << " <t>: active cartoon mode"<< std::endl
-         << " q, <esc>: Quit" << std::endl << std::endl;
+         << " <q>, <esc>: Quit" << std::endl << std::endl;
 }
 
 void addPlane(Mesh & mesh){
@@ -139,7 +139,7 @@ void addPlane(Mesh & mesh){
 }
 
 void computePerVertexAO (unsigned int numOfSamples, float radius, const Mesh& mesh){
-	srand((unsigned)time(NULL));
+	srand((unsigned)time(0));
 	unsigned int mesh_size = mesh.positions().size();
 	for(unsigned int i = 0; i < mesh_size; i++){
 		Vec3f p = mesh.positions()[i];
@@ -150,8 +150,15 @@ void computePerVertexAO (unsigned int numOfSamples, float radius, const Mesh& me
 			float random_variable1 = (float)rand() / (RAND_MAX);
 			float random_variable2 = (float)rand() / (RAND_MAX);
 			float random_variable3 = (float)rand() / (RAND_MAX);
+			int sign1 = rand() % 2;
+			int sign2 = rand() % 2;
+			int sign3 = rand() % 2;
+			random_variable1 = (sign1 == 0) ? random_variable1 : - random_variable1;
+			random_variable2 = (sign2 == 0) ? random_variable2 : - random_variable2;
+			random_variable3 = (sign3 == 0) ? random_variable3 : - random_variable3;
 			Vec3f direction = Vec3f(random_variable1, random_variable2, random_variable3);
-			//if(  dot(direction, n) < 0.0f ) continue;
+			if(  length(direction) > 1.0 ) continue;
+			if(  ( dot(direction, n) / ( length(direction) * length(n) ) ) < 0.7f ) continue;
 			k++;
 			direction.normalize();
 			direction = direction * radius;
