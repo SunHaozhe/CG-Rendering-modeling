@@ -6,6 +6,7 @@ private:
   BVH * leftChild = nullptr;
   BVH * rightChild = nullptr;
   bool isLeaf = false;
+  Triangle triangle;
 
   //AxisAlignedBoundingBox calculateBoundingBox();
   //void redistributeTriangles();

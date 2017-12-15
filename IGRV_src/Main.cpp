@@ -182,7 +182,7 @@ void computePerVertexShadow(const Mesh& mesh){
 			Vec3f origin = mesh.positions()[i];
 	    Vec3f direction = lightPosition - origin;
 			//direction.normalize();
-			Ray ray(origin + direction * 0.01f, direction);
+			Ray ray(origin + direction * 0.00001f, direction);
 			if( ray.isIntersected(mesh) ){
 				colorResponses[i][3] = 0.0f;
 			}else{
