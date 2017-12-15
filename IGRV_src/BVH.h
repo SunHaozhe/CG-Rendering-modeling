@@ -1,13 +1,15 @@
+#include "AxisAlignedBoundingBox.h"
 
 class BVH{
 private:
   AxisAlignedBoundingBox bbox;
-  BVH * leftChild;
-  BVH * rightChild;
+  BVH * leftChild = nullptr;
+  BVH * rightChild = nullptr;
+  bool isLeaf = false;
 
-  AxisAlignedBoundingBox calculateBoundingBox();
-  void redistributeTriangles();
+  //AxisAlignedBoundingBox calculateBoundingBox();
+  //void redistributeTriangles();
 public:
-  BVH(const Mesh & mesh);
+  BVH(AxisAlignedBoundingBox bbox): bbox(bbox) {}
   ~BVH();
 };

@@ -1,10 +1,13 @@
+#include "Vec3.h"
+#include "Triangle.h"
+#include "Mesh.h"
+#include "Ray.h"
+
 class AxisAlignedBoundingBox{
 private:
-  Vec3f position;
-  Vec3f normal;
-  Vec3f average_color;
-  Ray ray;
+  Vec3f min_point, max_point;
 public:
-  AxisAlignedBoundingBox();
+  AxisAlignedBoundingBox() {}
+  AxisAlignedBoundingBox(Vec3f min_point, Vec3f max_point) {}
   ~AxisAlignedBoundingBox();
 };

@@ -28,6 +28,7 @@
 #include "LightSource.h"
 #include "Ray.h"
 #include "Vec4.h"
+//#include "BVH.h"
 
 using namespace std;
 
@@ -62,8 +63,8 @@ static float F0Speed = 0.01f;
 static float alpha = 0.5f;         //roughness
 static float F0 = 0.5f;						//Fresnel refraction index, dependent on material
 
-static int nb_samples_AO = 10;		 //number of sample of rays in one point when calculating AO
-static float radius_AO = 0.001f;   //radius of rays when calculating AO
+static int nb_samples_AO = 20;		 //number of sample of rays in one point when calculating AO
+static float radius_AO = 0.6f;   //radius of rays when calculating AO
 
 static bool microFacet = false;		//Blinn-Phong BRDF / micro facet BRDF
 static bool ggx = false;					//Cook-Torrance micro facet BRDF / GGX micro facet BRDF
@@ -109,7 +110,7 @@ void printUsage () {
 void addPlane(Mesh & mesh){
 	//Parameters
 	unsigned int nb_per_row = 22;
-	float z = - 2.0f;				//  offset XY-plane
+	float z = - 1.2f;				//  offset XY-plane
 	float l = 0.125f;   			//	l^2 = area of a square
 	float first_square_originX = - 1.4f;
 	float first_square_originY = - 1.6f;
@@ -166,7 +167,7 @@ void computePerVertexAO (unsigned int numOfSamples, float radius, const Mesh& me
 			if( ! ray.isIntersected(mesh) ) mark += 1.0f;
 			if(k == numOfSamples) break;
 		}
-		colorResponses[i][3] *= (float)(mark / numOfSamples);
+		colorResponses[i][0] = (float)(mark / numOfSamples);
 	}
 }
 
@@ -183,9 +184,9 @@ void computePerVertexShadow(const Mesh& mesh){
 			//direction.normalize();
 			Ray ray(origin + direction * 0.01f, direction);
 			if( ray.isIntersected(mesh) ){
-				colorResponses[i][3] *= - 1.0f;
+				colorResponses[i][3] = 0.0f;
 			}else{
-				colorResponses[i][3] *= 1.0f;
+				colorResponses[i][3] = 1.0f;
 			}
 		}
 	}
@@ -220,7 +221,7 @@ void init (const char * modelFilename) {
 
 		//8 light sources maximum
 		lightSources.resize(8);
-		lightSources[0] = LightSource(Vec3f(0.0f, 0.0f, 2.0f), Vec3f(4.0f, 2.0f, 3.0f));
+		lightSources[0] = LightSource(Vec3f(0.0f, 0.0f, 5.0f), Vec3f(4.0f, 2.0f, 3.0f));
 		lightSources[0].activeLightSource();
 		//lightSources[1] = LightSource(Vec3f(1.0f, 1.0f, 1.0f), Vec3f(1.0f, 0.9f, 0.8f));
 		//lightSources[1].activeLightSource();
@@ -228,10 +229,6 @@ void init (const char * modelFilename) {
 		//lightSources[2].activeLightSource();
 
 		if(renderShadowOnlyInInit == true){
-			unsigned int mesh_size = mesh.positions().size();
-			for(unsigned int i = 0; i < mesh_size; i++){
-				colorResponses[i][3] = 1.0f;     //initialize all colorResponses[i][3]
-			}
 			if(perVertexAO == true) computePerVertexAO(nb_samples_AO, radius_AO, mesh);
 			if(perVertexShadow == true) computePerVertexShadow(mesh);
 		}
@@ -353,7 +350,6 @@ void renderScene () {
 			for(unsigned int i = 0; i < mesh_size; i++){
 				colorResponses[i][3] = 1.0f;     //initialize all colorResponses[i][3]
 			}
-			if(perVertexAO == true) computePerVertexAO(nb_samples_AO, radius_AO, mesh);
 			if(perVertexShadow == true) computePerVertexShadow(mesh);
 		}
 
