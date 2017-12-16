@@ -19,6 +19,9 @@
 #include <algorithm>
 #include <cmath>
 #include <time.h>
+#include <limits>
+#include <set>
+#include <algorithm>
 
 #include "Vec3.h"
 #include "Camera.h"
@@ -26,9 +29,9 @@
 #include "GLProgram.h"
 #include "Exception.h"
 #include "LightSource.h"
-#include "Ray.h"
+//#include "Ray.h"
 #include "Vec4.h"
-//#include "BVH.h"
+#include "BVH.h"
 
 using namespace std;
 
@@ -51,8 +54,11 @@ GLProgram * glProgram;
 static std::vector<Vec4f> colorResponses;		// Cached per-vertex color response, updated at each frame
 static std::vector<LightSource> lightSources;
 
+static BVH * big_bvh;
+static unsigned int deep_count = 0;
+
 //speeds of interactions
-static float lightMoveSpeed = 0.5f;
+//static float lightMoveSpeed = 0.5f;
 static float alphaSpeed = 0.02f;
 static float F0Speed = 0.01f;
 
@@ -92,7 +98,6 @@ void printUsage () {
          << " <drag>+<middle button>: zoom" << std::endl
 				 << " <f>: full screen mode"<< std::endl
 				 << " <w>: skeleton mode"<< std::endl
-				 << " <left button> / <right button>: move the first light source"<< std::endl
 				 << " <c>: Blinn-Phong mode for specular reflection"<< std::endl
 				 << " <v>: Cook-Torrance micro facet mode for specular reflection"<< std::endl
 				 << " <b>: GGX micro facet mode (Smith) for specular reflection"<< std::endl
@@ -105,6 +110,77 @@ void printUsage () {
 				 << " <o>: active Ambient occlusion mode (per vertex AO)"<< std::endl
 				 << " <t>: active cartoon mode"<< std::endl
          << " <q>, <esc>: Quit" << std::endl << std::endl;
+}
+
+int chooseAxis(float x_distance, float y_distance, float z_distance){
+	// 0 x, 1 y, 2 z
+	if( x_distance >= y_distance && x_distance >= z_distance ) return 0;
+	else if ( y_distance >= x_distance && y_distance >= z_distance ) return 1;
+	else return 2;
+}
+
+void calculateMinMax(Vec3f & min_p, Vec3f & max_p, const vector<Triangle> & t){
+	set<Vec3f> points;
+	for(unsigned int i = 0; i < t.size(); i++){
+		points.insert( mesh.positions()[ t[i][0] ] );
+		points.insert( mesh.positions()[ t[i][1] ] );
+		points.insert( mesh.positions()[ t[i][2] ] );
+	}
+	set<Vec3f>::iterator it;
+	for(auto point: points){
+			if( max_p[0] < point[0] ) max_p[0] = point[0];
+			if( max_p[1] < point[1] ) max_p[1] = point[1];
+			if( max_p[2] < point[2] ) max_p[2] = point[2];
+			if( min_p[0] > point[0] ) min_p[0] = point[0];
+			if( min_p[1] > point[1] ) min_p[1] = point[1];
+			if( min_p[2] > point[2] ) min_p[2] = point[2];
+	}
+}
+
+float calculateMedian(vector<float> & centroids){
+	size_t n = centroids.size() / 2;
+  nth_element(centroids.begin(), centroids.begin()+n, centroids.end());
+  return centroids[n];
+}
+
+void redistributeTriangles(vector<Triangle> & triangles_left, vector<Triangle> & triangles_right, const vector<Triangle> & t, const int & axis, const Vec3f & max_p, const Vec3f & min_p){
+	vector<float> centroids;
+	for(unsigned int i = 0; i < t.size(); i++){
+		float p0 = mesh.positions()[ t[i][0] ][axis];
+		float p1 = mesh.positions()[ t[i][1] ][axis];
+		float p2 = mesh.positions()[ t[i][2] ][axis];
+		float centroid = ( p0 + p1 + p2 ) / 3.0f;
+		centroids.push_back(centroid);
+	}
+	sort( centroids.begin(), centroids.end() );
+	unsigned int median_index = centroids.size() / 2;
+	for(unsigned int i = 0; i < t.size(); i++){
+		if( i < median_index ) triangles_left.push_back( t[i] );
+		else triangles_right.push_back( t[i] );
+	}
+}
+
+BVH * buildBVH(const vector<Triangle> & t, unsigned int deep_count1){
+	if( deep_count < deep_count1 ) deep_count = deep_count1;
+	if( t.size() == 0 ) return nullptr;
+	float max_float = numeric_limits<float>::max();
+	float min_float = numeric_limits<float>::min();
+	Vec3f max_p = Vec3f(min_float, min_float, min_float);
+	Vec3f min_p = Vec3f(max_float, max_float, max_float);
+	calculateMinMax(min_p, max_p, t);
+	AxisAlignedBoundingBox aabb(min_p, max_p);
+	if( t.size() == 1 ){
+		BVH * bvh = new BVH(aabb, t[0]);
+		return bvh;
+	}else{
+		int axis = chooseAxis(max_p[0] - min_p[0], max_p[1] - min_p[1], max_p[2] - min_p[2]);
+		vector<Triangle> triangles_left, triangles_right;
+		redistributeTriangles(triangles_left, triangles_right, t, axis, max_p, min_p);
+		BVH * left_c = buildBVH(triangles_left, deep_count1 + 1);
+		BVH * right_c = buildBVH(triangles_right, deep_count1 + 1);
+		BVH * bvh = new BVH(aabb, left_c, right_c );
+		return bvh;
+	}
 }
 
 void addPlane(Mesh & mesh){
@@ -218,6 +294,11 @@ void init (const char * modelFilename) {
     } catch (Exception & e) {
         cerr << e.msg () << endl;
     }
+
+		unsigned int deep_count1 = 0;
+		big_bvh = buildBVH( mesh.triangles(), deep_count1);
+		std::cout << "BVH has been built." << '\n';
+		cout << "deep_count of BVH is " << deep_count << '\n';
 
 		//8 light sources maximum
 		lightSources.resize(8);
@@ -456,16 +537,13 @@ void key (unsigned char keyPressed, int x, int y) {
 
 void specialKey(GLint key, GLint x, GLint y){
     switch (key) {
-            break;
    	    case GLUT_KEY_UP:
             break;
         case GLUT_KEY_DOWN:
             break;
         case GLUT_KEY_LEFT:
-						lightSources[0].moveXBy(-lightMoveSpeed);
             break;
         case GLUT_KEY_RIGHT:
-						lightSources[0].moveXBy(lightMoveSpeed);
             break;
         default:
             break;

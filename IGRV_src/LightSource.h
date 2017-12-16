@@ -13,5 +13,5 @@ class LightSource{
     Vec3f getColor() const {return color;}
     Vec3f getPosition() const {return light_position;}
     bool isActive() const {return active;}
-    void moveXBy(float delta) {light_position += Vec3f(delta, 0.0f, 0.0f);}
+    //void moveXBy(float delta) {light_position += Vec3f(delta, 0.0f, 0.0f);}
 };

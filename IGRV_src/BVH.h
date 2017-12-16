@@ -11,6 +11,6 @@ private:
   //AxisAlignedBoundingBox calculateBoundingBox();
   //void redistributeTriangles();
 public:
-  BVH(AxisAlignedBoundingBox bbox): bbox(bbox) {}
-  ~BVH();
+  BVH(AxisAlignedBoundingBox bbox, Triangle triangle): bbox(bbox), isLeaf(true), triangle(triangle) {}
+  BVH(AxisAlignedBoundingBox bbox, BVH * l, BVH * r): bbox(bbox), leftChild(l), rightChild(r) {}
 };

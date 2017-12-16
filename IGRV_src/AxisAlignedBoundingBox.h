@@ -7,7 +7,5 @@ class AxisAlignedBoundingBox{
 private:
   Vec3f min_point, max_point;
 public:
-  AxisAlignedBoundingBox() {}
   AxisAlignedBoundingBox(Vec3f min_point, Vec3f max_point) {}
-  ~AxisAlignedBoundingBox();
 };
