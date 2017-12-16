@@ -10,7 +10,7 @@ varying vec4 C; // Interpolated fragment-wise color
 uniform bool perVertexShadow;
 uniform bool perVertexAO;
 
-const float cartoon_ambient_lighting_coefficient = 0.3;
+const float cartoon_ambient_lighting_coefficient = 0.15;
 
 vec3 calculateCartoonColor(){
 	vec3 x = vec3 (gl_ModelViewMatrix * P);       //x
@@ -27,6 +27,12 @@ vec3 calculateCartoonColor(){
 	return color;
 }
 
+float cartoon_AO_factor(){
+	if( abs(C.r) == 0.0 ) return 0.0;
+	else if( abs(C.r) <= 0.7 ) return 0.4;
+	else return 1.0;
+}
+
 void main (void) {
 	vec3 color = vec3(0.0, 0.0, 0.0);
 	if(perVertexShadow == true && perVertexAO == false){
@@ -36,11 +42,11 @@ void main (void) {
 	}else if(perVertexShadow == true && perVertexAO == true){
 		if(C.a > 0.0){
 			color = calculateCartoonColor();
-			color = color * (1.0 - abs(C.r) * cartoon_ambient_lighting_coefficient );
+			color = color * (1.0 - cartoon_AO_factor() * cartoon_ambient_lighting_coefficient );
 		}
 	}else if(perVertexShadow == false && perVertexAO == true){
 		color = calculateCartoonColor();
-		color = color * (1.0 - abs(C.r) * cartoon_ambient_lighting_coefficient );
+		color = color * (1.0 - cartoon_AO_factor() * cartoon_ambient_lighting_coefficient );
 	}
 	gl_FragColor = vec4(color, 1.0);
 }
