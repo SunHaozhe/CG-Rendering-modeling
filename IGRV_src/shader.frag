@@ -17,8 +17,7 @@ uniform int numberOfLightActive;
 
 const vec3 matAlbedo = vec3 (0.8, 0.2, 0.3);
 const float pi = 3.1415927;
-const float ambient_lighting_coefficient = 0.15;
-const float cartoon_ambient_lighting_coefficient = 0.7;
+const float ambient_lighting_coefficient = 0.7;
 
 //coefficients for attenuation, aq the coefficient for d^2, al the coefficient for d, ac the constant coefficient, where d means the distance between the vertex and the light source
 const float ac = 0.0;
@@ -38,7 +37,6 @@ uniform bool ggx;					//Cook-Torrance micro facet BRDF / GGX micro facet BRDF
 uniform bool schlick;			//Approximation of Schlick for GGX micro facet BRDF
 uniform bool perVertexShadow;
 uniform bool perVertexAO;
-uniform bool cartoon_mode;
 
 varying vec4 P; // Interpolated fragment-wise position
 varying vec3 N; // Interpolated fragment-wise normal
@@ -105,58 +103,20 @@ vec3 calculateColor(){
 	return color;
 }
 
-vec3 calculateCartoonColor(){
-	vec3 x = vec3 (gl_ModelViewMatrix * P);       //x
-	vec3 n = normalize (gl_NormalMatrix * N);     //n
-	vec3 wo = normalize (-x);                      //wo
-	vec3 color = matAlbedo;
-	for(int i = 0; i < numberOfLightActive; i++){
-		vec3 light_pos = (gl_ModelViewMatrix * vec4( lightPositions[i], 1.0 ) ).xyz;
-		vec3 wi = normalize (light_pos - x);            //wi
-		vec3 wh = normalize (wi + wo);                          //wh
-		if( dot(n, wh) >= 0.99 ) color = vec3(1.0, 1.0, 1.0);
-	}
-	if( abs(dot( n, wo )) <= 0.08 ) color = vec3(0.0, 0.0, 0.0);
-	return color;
-}
-
 void main (void) {
-	if(cartoon_mode == false){
-		vec3 color = vec3(0.0, 0.0, 0.0);
-		if(perVertexShadow == true && perVertexAO == false){
-				if(C.a > 0.0) 	color = calculateColor();
-		}else if(perVertexShadow == false && perVertexAO == false){
-				color = calculateColor();
-		}else if(perVertexShadow == true && perVertexAO == true){
-				if(C.a > 0.0){
-					color = calculateColor();
-					color = color * abs(C.r);
-				}
-		}else if(perVertexShadow == false && perVertexAO == true){
-				color = calculateColor();
-				color = color * abs(C.r);
-		}
-
-		gl_FragColor = vec4(color, 1.0);
-	}else{
-
-		// cartoon mode
-		vec3 color = vec3(0.0, 0.0, 0.0);
-		if(perVertexShadow == true && perVertexAO == false){
-			if(C.a > 0.0) 	color = calculateCartoonColor();
-		}else if(perVertexShadow == false && perVertexAO == false){
-			color = calculateCartoonColor();
-		}else if(perVertexShadow == true && perVertexAO == true){
+	vec3 color = vec3(0.0, 0.0, 0.0);
+	if(perVertexShadow == true && perVertexAO == false){
+			if(C.a > 0.0) 	color = calculateColor();
+	}else if(perVertexShadow == false && perVertexAO == false){
+			color = calculateColor();
+	}else if(perVertexShadow == true && perVertexAO == true){
 			if(C.a > 0.0){
-				color = calculateCartoonColor();
-				color = color * cartoon_ambient_lighting_coefficient;
+				color = calculateColor();
+				color = color * (1.0 - abs(C.r) * ambient_lighting_coefficient );
 			}
-		}else if(perVertexShadow == false && perVertexAO == true){
-			color = calculateCartoonColor();
-			color = color * cartoon_ambient_lighting_coefficient;
-		}
-
-		gl_FragColor = vec4(color, 1.0);
-
+	}else if(perVertexShadow == false && perVertexAO == true){
+			color = calculateColor();
+			color = color * (1.0 - abs(C.r) * ambient_lighting_coefficient );
 	}
+	gl_FragColor = vec4(color, 1.0);
 }

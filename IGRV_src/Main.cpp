@@ -48,7 +48,7 @@ static bool fullScreen = false;
 static Camera camera;
 static Mesh mesh;
 GLProgram * glProgram;
-//GLProgram * toonProgram;
+GLProgram * toonProgram;
 
 //static std::vector<Vec3f> colorResponses;
 static std::vector<Vec4f> colorResponses;		// Cached per-vertex color response, updated at each frame
@@ -240,7 +240,7 @@ void computePerVertexAO (unsigned int numOfSamples, float radius, const Mesh& me
 			direction.normalize();
 			direction = direction * radius;
 			Ray ray(p, direction);
-			if( ! ray.isIntersected(mesh) ) mark += 1.0f;
+			if( ray.isIntersected(mesh) ) mark += 1.0f;
 			if(k == numOfSamples) break;
 		}
 		colorResponses[i][0] = (float)(mark / numOfSamples);
@@ -289,16 +289,16 @@ void init (const char * modelFilename) {
 
     try {
         glProgram = GLProgram::genVFProgram ("Simple GL Program", "shader.vert", "shader.frag"); // Load and compile pair of shaders
-				//toonProgram = GLProgram::genVFProgram ("Cartoon GL Program", "shader_cartoon.vert", "shader_cartoon.frag");
+				toonProgram = GLProgram::genVFProgram ("Cartoon GL Program", "shader_cartoon.vert", "shader_cartoon.frag");
 				glProgram->use (); // Activate the shader program
     } catch (Exception & e) {
         cerr << e.msg () << endl;
     }
 
-		unsigned int deep_count1 = 0;
-		big_bvh = buildBVH( mesh.triangles(), deep_count1);
-		std::cout << "BVH has been built." << '\n';
-		cout << "deep_count of BVH is " << deep_count << '\n';
+		//unsigned int deep_count1 = 0;
+		//big_bvh = buildBVH( mesh.triangles(), deep_count1);
+		//cout << "BVH has been built." << '\n';
+		//cout << "deep_count of BVH is " << deep_count << '\n';
 
 		//8 light sources maximum
 		lightSources.resize(8);
@@ -404,33 +404,38 @@ void renderScene () {
 			}
 		}
 
-		GLint variableLocationPos = glProgram->getUniformLocation("lightPositions");
-		GLint variableLocationCol = glProgram->getUniformLocation("lightColors");
-		glUniform3fv (variableLocationPos, nb_light_active, lightPos);
-		glUniform3fv (variableLocationCol, nb_light_active, lightCol);
-		glProgram->setUniform1i("numberOfLightActive", nb_light_active);
+		if( cartoon_mode == false ){
+			glProgram->use ();
+			GLint variableLocationPos = glProgram->getUniformLocation("lightPositions");
+			GLint variableLocationCol = glProgram->getUniformLocation("lightColors");
+			glUniform3fv (variableLocationPos, nb_light_active, lightPos);
+			glUniform3fv (variableLocationCol, nb_light_active, lightCol);
+			glProgram->setUniform1i("numberOfLightActive", nb_light_active);
 
-		//glProgram->setUniform1f("ac", ac);
-		//glProgram->setUniform1f("al", al);
-		//glProgram->setUniform1f("aq", aq);
-		//glProgram->setUniform1f("ks", ks);
-		//glProgram->setUniform1f("fd", fd);
-		//glProgram->setUniform1f("s", s);
-		glProgram->setUniform1f("alpha", alpha);
-		glProgram->setUniform1f("F0", F0);
-		glProgram->setUniform1i("microFacet", microFacet);
-		glProgram->setUniform1i("ggx", ggx);
-		glProgram->setUniform1i("schlick", schlick);
-		glProgram->setUniform1i("perVertexShadow", perVertexShadow);
-		glProgram->setUniform1i("perVertexAO", perVertexAO);
-		glProgram->setUniform1i("cartoon_mode", cartoon_mode);
+			//glProgram->setUniform1f("ac", ac);
+			//glProgram->setUniform1f("al", al);
+			//glProgram->setUniform1f("aq", aq);
+			//glProgram->setUniform1f("ks", ks);
+			//glProgram->setUniform1f("fd", fd);
+			//glProgram->setUniform1f("s", s);
+			glProgram->setUniform1f("alpha", alpha);
+			glProgram->setUniform1f("F0", F0);
+			glProgram->setUniform1i("microFacet", microFacet);
+			glProgram->setUniform1i("ggx", ggx);
+			glProgram->setUniform1i("schlick", schlick);
+			glProgram->setUniform1i("perVertexShadow", perVertexShadow);
+			glProgram->setUniform1i("perVertexAO", perVertexAO);
+		}else{
+			toonProgram->use ();
+			GLint variableLocationPos = toonProgram->getUniformLocation("lightPositions");
+			glUniform3fv (variableLocationPos, nb_light_active, lightPos);
+			toonProgram->setUniform1i("numberOfLightActive", nb_light_active);
 
+			toonProgram->setUniform1i("perVertexShadow", perVertexShadow);
+			toonProgram->setUniform1i("perVertexAO", perVertexAO);
+		}
 
 		if(renderShadowOnlyInInit == false){
-			unsigned int mesh_size = mesh.positions().size();
-			for(unsigned int i = 0; i < mesh_size; i++){
-				colorResponses[i][3] = 1.0f;     //initialize all colorResponses[i][3]
-			}
 			if(perVertexShadow == true) computePerVertexShadow(mesh);
 		}
 
