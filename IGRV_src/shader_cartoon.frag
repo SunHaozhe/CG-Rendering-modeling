@@ -23,7 +23,7 @@ vec3 calculateCartoonColor(){
 		vec3 wh = normalize (wi + wo);                          //wh
 		if( dot(n, wh) >= 0.99 ) color = vec3(1.0, 1.0, 1.0);
 	}
-	if( abs(dot( n, wo )) <= 0.08 ) color = vec3(0.0, 0.0, 0.0);
+	//if( abs(dot( n, wo )) <= 0.08 ) color = vec3(0.0, 0.0, 0.0);
 	return color;
 }
 

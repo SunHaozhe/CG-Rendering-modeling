@@ -49,6 +49,7 @@ static Camera camera;
 static Mesh mesh;
 GLProgram * glProgram;
 GLProgram * toonProgram;
+GLProgram * toon_outlines_Program;
 
 //static std::vector<Vec3f> colorResponses;
 static std::vector<Vec4f> colorResponses;		// Cached per-vertex color response, updated at each frame
@@ -290,6 +291,7 @@ void init (const char * modelFilename) {
     try {
         glProgram = GLProgram::genVFProgram ("Simple GL Program", "shader.vert", "shader.frag"); // Load and compile pair of shaders
 				toonProgram = GLProgram::genVFProgram ("Cartoon GL Program", "shader_cartoon.vert", "shader_cartoon.frag");
+				toon_outlines_Program = GLProgram::genVFProgram ("Outline GL Program", "shader_outline_cartoon.vert", "shader_outline_cartoon.frag");
 				glProgram->use (); // Activate the shader program
     } catch (Exception & e) {
         cerr << e.msg () << endl;
@@ -426,7 +428,12 @@ void renderScene () {
 			glProgram->setUniform1i("perVertexShadow", perVertexShadow);
 			glProgram->setUniform1i("perVertexAO", perVertexAO);
 		}else{
-			toonProgram->use ();
+			glCullFace (GL_FRONT);
+			toon_outlines_Program->use();
+			glDrawElements (GL_TRIANGLES, 3*mesh.triangles().size(), GL_UNSIGNED_INT, (GLvoid*)((&mesh.triangles()[0])));
+
+			glCullFace (GL_BACK);
+			toonProgram->use();
 			GLint variableLocationPos = toonProgram->getUniformLocation("lightPositions");
 			glUniform3fv (variableLocationPos, nb_light_active, lightPos);
 			toonProgram->setUniform1i("numberOfLightActive", nb_light_active);
@@ -531,9 +538,6 @@ void key (unsigned char keyPressed, int x, int y) {
 				break;
 		case 't':
 				cartoon_mode = ! cartoon_mode;
-				//if(cartoon_mode == false) toonProgram->use ();
-				//else glProgram->use ();
-				break;
     default:
         printUsage ();
         break;
