@@ -17,7 +17,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <algorithm>
-#include <cmath>
+//#include <cmath>
 #include <time.h>
 //#include <limits>
 #include <set>
@@ -58,6 +58,7 @@ static std::vector<LightSource> lightSources;
 
 static BVH * big_bvh;
 static unsigned int deep_count = 0;
+static unsigned int currentDeep = 0;
 
 std::vector<Vec3f> BVH::bvh_positions;
 std::vector<unsigned int> BVH::bvh_indices;
@@ -113,6 +114,8 @@ void printUsage () {
 				 << " <u>: decrease Fresnel refraction index F0 for micro facet mode"<< std::endl
 				 << " <s>: active shadow mode (per vertex shadow)"<< std::endl
 				 << " <o>: active Ambient occlusion mode (per vertex AO)"<< std::endl
+				 << " <g>: visualize Bounding Bolume Hierarchy (BVH), one more layer visualized for every click"<< std::endl
+				 << " <h>: remove one layer for the visualization of Bounding Bolume Hierarchy (BVH)"<< std::endl
 				 << " <t>: active cartoon mode"<< std::endl
          << " <q>, <esc>: Quit" << std::endl << std::endl;
 }
@@ -488,7 +491,7 @@ void renderScene () {
 		bvhProgram->use();
 		glVertexPointer (3, GL_FLOAT, sizeof (Vec3f), (GLvoid*)(&(BVH::bvh_positions[0])));
     //glDrawElements (GL_LINES, BVH::bvh_indices.size(), GL_UNSIGNED_INT, (GLvoid*)((&BVH::bvh_indices[0])));
-		glDrawElements (GL_LINE_LOOP, BVH::bvh_indices.size(), GL_UNSIGNED_INT, (GLvoid*)((&BVH::bvh_indices[0])));
+		glDrawElements (GL_LINES, BVH::bvh_indices.size(), GL_UNSIGNED_INT, (GLvoid*)((&BVH::bvh_indices[0])));
 }
 
 void reshape(int w, int h) {
@@ -578,7 +581,14 @@ void key (unsigned char keyPressed, int x, int y) {
 				cartoon_mode = ! cartoon_mode;
 				break;
 		case 'g':
-				big_bvh->drawBVH();
+				currentDeep++;
+				big_bvh->drawBVH( BVH::deepToNumberOfNodes(currentDeep) );
+				break;
+		case 'h':
+				if( currentDeep > 0 ){
+					currentDeep--;
+					big_bvh->drawBVH( BVH::deepToNumberOfNodes(currentDeep) );
+				}
 				break;
     default:
         printUsage ();
