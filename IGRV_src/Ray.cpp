@@ -11,9 +11,6 @@ bool Ray::isIntersected(const Mesh& mesh) const {
 
   vector<Triangle> triangle_indices = mesh.triangles ();
   vector<Vec3f> vertex_list = mesh.positions ();
-  //float radius = length(direction);
-  //Vec3f direction_ = Vec3f( direction[0], direction[1], direction[2] );
-  //direction_.normalize();
 
   for(unsigned int i = 0; i < triangle_indices.size(); i++){
     Triangle threeIndices = triangle_indices[i];
@@ -49,7 +46,6 @@ bool Ray::isIntersected(const Mesh& mesh) const {
       break;
     }
   }
-
   return intersected;
 }
 
@@ -77,10 +73,6 @@ bool Ray::isIntersectedWithTriangle(const Vec3f & v0, const Vec3f & v1, const Ve
 }
 
 bool Ray::isIntersectedWithCube(const Vec3f & min_p, const Vec3f & max_p) const {
-  //Vec3f dirInv;
-  //dirInv[0] = ( direction[0] == 0.0f ) ? ( 1.0f / std::numeric_limits<float>::min() ) : ( 1.0f / direction[0] );
-  //dirInv[1] = ( direction[1] == 0.0f ) ? ( 1.0f / std::numeric_limits<float>::min() ) : ( 1.0f / direction[1] );
-  //dirInv[2] = ( direction[2] == 0.0f ) ? ( 1.0f / std::numeric_limits<float>::min() ) : ( 1.0f / direction[2] );
   Vec3f dirInv = Vec3f(1.0f / direction[0], 1.0f / direction[1], 1.0f / direction[2]);
   float t1 = (min_p[0] - origin[0]) * dirInv[0];
   float t2 = (max_p[0] - origin[0]) * dirInv[0];

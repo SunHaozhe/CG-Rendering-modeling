@@ -4,7 +4,6 @@
 #include <limits>
 
 class Ray{
-
   private:
     Vec3f origin;
     Vec3f direction;

@@ -126,24 +126,6 @@ int chooseAxis(float x_distance, float y_distance, float z_distance){
 	else if ( y_distance >= x_distance && y_distance >= z_distance ) return 1;
 	else return 2;
 }
-/*
-void calculateMinMax2(Vec3f & min_p, Vec3f & max_p, const vector<Triangle> & t){
-	set<Vec3f> points;
-	for(unsigned int i = 0; i < t.size(); i++){
-		points.insert( mesh.positions()[ t[i][0] ] );
-		points.insert( mesh.positions()[ t[i][1] ] );
-		points.insert( mesh.positions()[ t[i][2] ] );
-	}
-	set<Vec3f>::iterator it;
-	for(auto point: points){
-			if( max_p[0] < point[0] ) max_p[0] = point[0];
-			if( max_p[1] < point[1] ) max_p[1] = point[1];
-			if( max_p[2] < point[2] ) max_p[2] = point[2];
-			if( min_p[0] > point[0] ) min_p[0] = point[0];
-			if( min_p[1] > point[1] ) min_p[1] = point[1];
-			if( min_p[2] > point[2] ) min_p[2] = point[2];
-	}
-}*/
 
 void calculateMinMax(Vec3f & min_p, Vec3f & max_p, const vector<Triangle> & t){
 	for(unsigned int i = 0; i < t.size(); i++){
@@ -168,12 +150,6 @@ void calculateMinMax(Vec3f & min_p, Vec3f & max_p, const vector<Triangle> & t){
 		if( min_p[1] > mesh.positions()[ t[i][2] ][1] ) min_p[1] = mesh.positions()[ t[i][2] ][1];
 		if( min_p[2] > mesh.positions()[ t[i][2] ][2] ) min_p[2] = mesh.positions()[ t[i][2] ][2];
 	}
-}
-
-float calculateMedian(vector<float> & centroids){
-	size_t n = centroids.size() / 2;
-  nth_element(centroids.begin(), centroids.begin()+n, centroids.end());
-  return centroids[n];
 }
 
 void redistributeTriangles(vector<Triangle> & triangles_left, vector<Triangle> & triangles_right, const vector<Triangle> & t, const int & axis, const Vec3f & max_p, const Vec3f & min_p){
@@ -351,6 +327,7 @@ void init (const char * modelFilename) {
 
 }
 
+/*
 float G1Schlick(Vec3f w, Vec3f n){
 	float k = alpha * sqrt(2.0f / M_PI);
 	return dot(n, w) / (dot(n, w) * (1 - k) + k);
@@ -389,7 +366,7 @@ float microFacetFs(Vec3f n, Vec3f wi, Vec3f wo, Vec3f wh){
 
 // the following color response shall be replaced with a proper reflectance evaluation/shadow test/etc.
 //	This function is not compatible with shadow mode
-/*
+
 void updatePerVertexColorResponse () {
     for (unsigned int i = 0; i < colorResponses.size (); i++){
         colorResponses[i] = Vec3f (0.f, 0.f, 0.f);
@@ -490,7 +467,6 @@ void renderScene () {
 
 		bvhProgram->use();
 		glVertexPointer (3, GL_FLOAT, sizeof (Vec3f), (GLvoid*)(&(BVH::bvh_positions[0])));
-    //glDrawElements (GL_LINES, BVH::bvh_indices.size(), GL_UNSIGNED_INT, (GLvoid*)((&BVH::bvh_indices[0])));
 		glDrawElements (GL_LINES, BVH::bvh_indices.size(), GL_UNSIGNED_INT, (GLvoid*)((&BVH::bvh_indices[0])));
 }
 
