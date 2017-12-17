@@ -17,15 +17,11 @@
 #include <cstdio>
 #include <cstdlib>
 #include <algorithm>
-//#include <cmath>
 #include <time.h>
-//#include <limits>
 #include <set>
-#include <algorithm>
 
 #include "Vec3.h"
 #include "Camera.h"
-#include "Mesh.h"
 #include "GLProgram.h"
 #include "Exception.h"
 #include "LightSource.h"
@@ -52,16 +48,15 @@ GLProgram * toonProgram;
 GLProgram * toon_outlines_Program;
 GLProgram * bvhProgram;
 
-//static std::vector<Vec3f> colorResponses;
 static std::vector<Vec4f> colorResponses;		// Cached per-vertex color response, updated at each frame
 static std::vector<LightSource> lightSources;
 
 static BVH * big_bvh;
-static unsigned int deep_count = 0;
 static unsigned int currentDeep = 0;
 
 std::vector<Vec3f> BVH::bvh_positions;
 std::vector<unsigned int> BVH::bvh_indices;
+unsigned int BVH::deep_count = 0;
 
 //speeds of interactions
 //static float lightMoveSpeed = 0.5f;
@@ -118,78 +113,6 @@ void printUsage () {
 				 << " <h>: remove one layer for the visualization of Bounding Bolume Hierarchy (BVH)"<< std::endl
 				 << " <t>: active cartoon mode"<< std::endl
          << " <q>, <esc>: Quit" << std::endl << std::endl;
-}
-
-int chooseAxis(float x_distance, float y_distance, float z_distance){
-	// 0 x, 1 y, 2 z
-	if( x_distance >= y_distance && x_distance >= z_distance ) return 0;
-	else if ( y_distance >= x_distance && y_distance >= z_distance ) return 1;
-	else return 2;
-}
-
-void calculateMinMax(Vec3f & min_p, Vec3f & max_p, const vector<Triangle> & t){
-	for(unsigned int i = 0; i < t.size(); i++){
-		if( max_p[0] < mesh.positions()[ t[i][0] ][0] ) max_p[0] = mesh.positions()[ t[i][0] ][0];
-		if( max_p[1] < mesh.positions()[ t[i][0] ][1] ) max_p[1] = mesh.positions()[ t[i][0] ][1];
-		if( max_p[2] < mesh.positions()[ t[i][0] ][2] ) max_p[2] = mesh.positions()[ t[i][0] ][2];
-		if( min_p[0] > mesh.positions()[ t[i][0] ][0] ) min_p[0] = mesh.positions()[ t[i][0] ][0];
-		if( min_p[1] > mesh.positions()[ t[i][0] ][1] ) min_p[1] = mesh.positions()[ t[i][0] ][1];
-		if( min_p[2] > mesh.positions()[ t[i][0] ][2] ) min_p[2] = mesh.positions()[ t[i][0] ][2];
-
-		if( max_p[0] < mesh.positions()[ t[i][1] ][0] ) max_p[0] = mesh.positions()[ t[i][1] ][0];
-		if( max_p[1] < mesh.positions()[ t[i][1] ][1] ) max_p[1] = mesh.positions()[ t[i][1] ][1];
-		if( max_p[2] < mesh.positions()[ t[i][1] ][2] ) max_p[2] = mesh.positions()[ t[i][1] ][2];
-		if( min_p[0] > mesh.positions()[ t[i][1] ][0] ) min_p[0] = mesh.positions()[ t[i][1] ][0];
-		if( min_p[1] > mesh.positions()[ t[i][1] ][1] ) min_p[1] = mesh.positions()[ t[i][1] ][1];
-		if( min_p[2] > mesh.positions()[ t[i][1] ][2] ) min_p[2] = mesh.positions()[ t[i][1] ][2];
-
-		if( max_p[0] < mesh.positions()[ t[i][2] ][0] ) max_p[0] = mesh.positions()[ t[i][2] ][0];
-		if( max_p[1] < mesh.positions()[ t[i][2] ][1] ) max_p[1] = mesh.positions()[ t[i][2] ][1];
-		if( max_p[2] < mesh.positions()[ t[i][2] ][2] ) max_p[2] = mesh.positions()[ t[i][2] ][2];
-		if( min_p[0] > mesh.positions()[ t[i][2] ][0] ) min_p[0] = mesh.positions()[ t[i][2] ][0];
-		if( min_p[1] > mesh.positions()[ t[i][2] ][1] ) min_p[1] = mesh.positions()[ t[i][2] ][1];
-		if( min_p[2] > mesh.positions()[ t[i][2] ][2] ) min_p[2] = mesh.positions()[ t[i][2] ][2];
-	}
-}
-
-void redistributeTriangles(vector<Triangle> & triangles_left, vector<Triangle> & triangles_right, const vector<Triangle> & t, const int & axis, const Vec3f & max_p, const Vec3f & min_p){
-	vector<float> centroids;
-	for(unsigned int i = 0; i < t.size(); i++){
-		float p0 = mesh.positions()[ t[i][0] ][axis];
-		float p1 = mesh.positions()[ t[i][1] ][axis];
-		float p2 = mesh.positions()[ t[i][2] ][axis];
-		float centroid = ( p0 + p1 + p2 ) / 3.0f;
-		centroids.push_back(centroid);
-	}
-	sort( centroids.begin(), centroids.end() );
-	unsigned int median_index = centroids.size() / 2;
-	for(unsigned int i = 0; i < t.size(); i++){
-		if( i < median_index ) triangles_left.push_back( t[i] );
-		else triangles_right.push_back( t[i] );
-	}
-}
-
-BVH * buildBVH(const vector<Triangle> & t, unsigned int deep_count1){
-	if( deep_count < deep_count1 ) deep_count = deep_count1;
-	if( t.size() == 0 ) return nullptr;
-	float max_float = numeric_limits<float>::max();
-	float min_float =  - ( numeric_limits<float>::max() - 1);
-	Vec3f max_p = Vec3f(min_float, min_float, min_float);
-	Vec3f min_p = Vec3f(max_float, max_float, max_float);
-	calculateMinMax(min_p, max_p, t);
-	AxisAlignedBoundingBox aabb(min_p, max_p);
-	if( t.size() == 1 ){
-		BVH * bvh = new BVH(aabb, t[0]);
-		return bvh;
-	}else{
-		int axis = chooseAxis(max_p[0] - min_p[0], max_p[1] - min_p[1], max_p[2] - min_p[2]);
-		vector<Triangle> triangles_left, triangles_right;
-		redistributeTriangles(triangles_left, triangles_right, t, axis, max_p, min_p);
-		BVH * left_c = buildBVH(triangles_left, deep_count1 + 1);
-		BVH * right_c = buildBVH(triangles_right, deep_count1 + 1);
-		BVH * bvh = new BVH(aabb, left_c, right_c );
-		return bvh;
-	}
 }
 
 void addPlane(Mesh & mesh){
@@ -266,7 +189,6 @@ void computePerVertexShadow(const Mesh& mesh){
 		for(unsigned int i = 0; i < mesh_size; i++){
 			Vec3f origin = mesh.positions()[i];
 	    Vec3f direction = lightPosition - origin;
-			//direction.normalize();
 			Ray ray(origin + direction * 0.00001f, direction);
 			if( ray.isIntersected(mesh, big_bvh) ){
 				colorResponses[i][3] = 0.0f;
@@ -307,9 +229,9 @@ void init (const char * modelFilename) {
     }
 
 		unsigned int deep_count1 = 0;
-		big_bvh = buildBVH( mesh.triangles(), deep_count1);
+		big_bvh = BVH::buildBVH( mesh.triangles(), mesh, deep_count1);
 		cout << "BVH has been built." << '\n';
-		cout << "deep_count of BVH is " << deep_count << '\n';
+		cout << "deep_count of BVH is " << BVH::deep_count << '\n';
 
 		//8 light sources maximum
 		lightSources.resize(8);
@@ -461,7 +383,6 @@ void renderScene () {
 
     glVertexPointer (3, GL_FLOAT, sizeof (Vec3f), (GLvoid*)(&(mesh.positions()[0])));
     glNormalPointer (GL_FLOAT, 3*sizeof (float), (GLvoid*)&(mesh.normals()[0]));
-    //glColorPointer (3, GL_FLOAT, sizeof (Vec3f), (GLvoid*)(&(colorResponses[0])));
 		glColorPointer (4, GL_FLOAT, sizeof (Vec4f), (GLvoid*)(&(colorResponses[0])));
     glDrawElements (GL_TRIANGLES, 3*mesh.triangles().size(), GL_UNSIGNED_INT, (GLvoid*)((&mesh.triangles()[0])));
 

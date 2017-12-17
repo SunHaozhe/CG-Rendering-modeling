@@ -1,3 +1,6 @@
+#include <algorithm>
+
+#include "Mesh.h"
 #include "AxisAlignedBoundingBox.h"
 
 class BVH{
@@ -8,17 +11,24 @@ private:
   bool isLeaf = false;
   Triangle triangle;
 
+  BVH(AxisAlignedBoundingBox bbox, Triangle triangle): bbox(bbox), isLeaf(true), triangle(triangle) {}
+  BVH(AxisAlignedBoundingBox bbox, BVH * l, BVH * r): bbox(bbox), leftChild(l), rightChild(r) {}
+
+  static int chooseAxis(float x_distance, float y_distance, float z_distance);
+  static void calculateMinMax(Vec3f & min_p, Vec3f & max_p, const std::vector<Triangle> & t, const Mesh & mesh);
+  static void redistributeTriangles(std::vector<Triangle> & triangles_left, std::vector<Triangle> & triangles_right,
+                                const std::vector<Triangle> & t, const int & axis, const Vec3f & max_p, const Vec3f & min_p, const Mesh & mesh);
   static void drawCube(const Vec3f & min_p, const Vec3f & max_p);
   static void drawCube(BVH * const bvh);
 
 public:
   static std::vector<Vec3f> bvh_positions;
   static std::vector<unsigned int> bvh_indices;
+  static unsigned int deep_count;
 
+  static BVH * buildBVH(const std::vector<Triangle> & t, const Mesh & mesh, unsigned int deep_count1);
   static unsigned int deepToNumberOfNodes(unsigned int currentDeep);
 
-  BVH(AxisAlignedBoundingBox bbox, Triangle triangle): bbox(bbox), isLeaf(true), triangle(triangle) {}
-  BVH(AxisAlignedBoundingBox bbox, BVH * l, BVH * r): bbox(bbox), leftChild(l), rightChild(r) {}
   BVH * getLeftChild() {return leftChild;}
   BVH * getRightChild() {return rightChild;}
   AxisAlignedBoundingBox getAABB() {return bbox;}
