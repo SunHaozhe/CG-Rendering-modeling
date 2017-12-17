@@ -19,7 +19,7 @@
 #include <algorithm>
 #include <cmath>
 #include <time.h>
-#include <limits>
+//#include <limits>
 #include <set>
 #include <algorithm>
 
@@ -29,9 +29,8 @@
 #include "GLProgram.h"
 #include "Exception.h"
 #include "LightSource.h"
-//#include "Ray.h"
+#include "Ray.h"
 #include "Vec4.h"
-#include "BVH.h"
 
 using namespace std;
 
@@ -47,9 +46,11 @@ static bool fullScreen = false;
 
 static Camera camera;
 static Mesh mesh;
+
 GLProgram * glProgram;
 GLProgram * toonProgram;
 GLProgram * toon_outlines_Program;
+GLProgram * bvhProgram;
 
 //static std::vector<Vec3f> colorResponses;
 static std::vector<Vec4f> colorResponses;		// Cached per-vertex color response, updated at each frame
@@ -57,6 +58,9 @@ static std::vector<LightSource> lightSources;
 
 static BVH * big_bvh;
 static unsigned int deep_count = 0;
+
+std::vector<Vec3f> BVH::bvh_positions;
+std::vector<unsigned int> BVH::bvh_indices;
 
 //speeds of interactions
 //static float lightMoveSpeed = 0.5f;
@@ -119,8 +123,8 @@ int chooseAxis(float x_distance, float y_distance, float z_distance){
 	else if ( y_distance >= x_distance && y_distance >= z_distance ) return 1;
 	else return 2;
 }
-
-void calculateMinMax(Vec3f & min_p, Vec3f & max_p, const vector<Triangle> & t){
+/*
+void calculateMinMax2(Vec3f & min_p, Vec3f & max_p, const vector<Triangle> & t){
 	set<Vec3f> points;
 	for(unsigned int i = 0; i < t.size(); i++){
 		points.insert( mesh.positions()[ t[i][0] ] );
@@ -135,6 +139,31 @@ void calculateMinMax(Vec3f & min_p, Vec3f & max_p, const vector<Triangle> & t){
 			if( min_p[0] > point[0] ) min_p[0] = point[0];
 			if( min_p[1] > point[1] ) min_p[1] = point[1];
 			if( min_p[2] > point[2] ) min_p[2] = point[2];
+	}
+}*/
+
+void calculateMinMax(Vec3f & min_p, Vec3f & max_p, const vector<Triangle> & t){
+	for(unsigned int i = 0; i < t.size(); i++){
+		if( max_p[0] < mesh.positions()[ t[i][0] ][0] ) max_p[0] = mesh.positions()[ t[i][0] ][0];
+		if( max_p[1] < mesh.positions()[ t[i][0] ][1] ) max_p[1] = mesh.positions()[ t[i][0] ][1];
+		if( max_p[2] < mesh.positions()[ t[i][0] ][2] ) max_p[2] = mesh.positions()[ t[i][0] ][2];
+		if( min_p[0] > mesh.positions()[ t[i][0] ][0] ) min_p[0] = mesh.positions()[ t[i][0] ][0];
+		if( min_p[1] > mesh.positions()[ t[i][0] ][1] ) min_p[1] = mesh.positions()[ t[i][0] ][1];
+		if( min_p[2] > mesh.positions()[ t[i][0] ][2] ) min_p[2] = mesh.positions()[ t[i][0] ][2];
+
+		if( max_p[0] < mesh.positions()[ t[i][1] ][0] ) max_p[0] = mesh.positions()[ t[i][1] ][0];
+		if( max_p[1] < mesh.positions()[ t[i][1] ][1] ) max_p[1] = mesh.positions()[ t[i][1] ][1];
+		if( max_p[2] < mesh.positions()[ t[i][1] ][2] ) max_p[2] = mesh.positions()[ t[i][1] ][2];
+		if( min_p[0] > mesh.positions()[ t[i][1] ][0] ) min_p[0] = mesh.positions()[ t[i][1] ][0];
+		if( min_p[1] > mesh.positions()[ t[i][1] ][1] ) min_p[1] = mesh.positions()[ t[i][1] ][1];
+		if( min_p[2] > mesh.positions()[ t[i][1] ][2] ) min_p[2] = mesh.positions()[ t[i][1] ][2];
+
+		if( max_p[0] < mesh.positions()[ t[i][2] ][0] ) max_p[0] = mesh.positions()[ t[i][2] ][0];
+		if( max_p[1] < mesh.positions()[ t[i][2] ][1] ) max_p[1] = mesh.positions()[ t[i][2] ][1];
+		if( max_p[2] < mesh.positions()[ t[i][2] ][2] ) max_p[2] = mesh.positions()[ t[i][2] ][2];
+		if( min_p[0] > mesh.positions()[ t[i][2] ][0] ) min_p[0] = mesh.positions()[ t[i][2] ][0];
+		if( min_p[1] > mesh.positions()[ t[i][2] ][1] ) min_p[1] = mesh.positions()[ t[i][2] ][1];
+		if( min_p[2] > mesh.positions()[ t[i][2] ][2] ) min_p[2] = mesh.positions()[ t[i][2] ][2];
 	}
 }
 
@@ -165,7 +194,7 @@ BVH * buildBVH(const vector<Triangle> & t, unsigned int deep_count1){
 	if( deep_count < deep_count1 ) deep_count = deep_count1;
 	if( t.size() == 0 ) return nullptr;
 	float max_float = numeric_limits<float>::max();
-	float min_float = numeric_limits<float>::min();
+	float min_float =  - ( numeric_limits<float>::max() - 1);
 	Vec3f max_p = Vec3f(min_float, min_float, min_float);
 	Vec3f min_p = Vec3f(max_float, max_float, max_float);
 	calculateMinMax(min_p, max_p, t);
@@ -241,7 +270,7 @@ void computePerVertexAO (unsigned int numOfSamples, float radius, const Mesh& me
 			direction.normalize();
 			direction = direction * radius;
 			Ray ray(p, direction);
-			if( ray.isIntersected(mesh) ) mark += 1.0f;
+			if( ray.isIntersected(mesh, big_bvh) ) mark += 1.0f;
 			if(k == numOfSamples) break;
 		}
 		colorResponses[i][0] = (float)(mark / numOfSamples);
@@ -260,7 +289,7 @@ void computePerVertexShadow(const Mesh& mesh){
 	    Vec3f direction = lightPosition - origin;
 			//direction.normalize();
 			Ray ray(origin + direction * 0.00001f, direction);
-			if( ray.isIntersected(mesh) ){
+			if( ray.isIntersected(mesh, big_bvh) ){
 				colorResponses[i][3] = 0.0f;
 			}else{
 				colorResponses[i][3] = 1.0f;
@@ -292,15 +321,16 @@ void init (const char * modelFilename) {
         glProgram = GLProgram::genVFProgram ("Simple GL Program", "shader.vert", "shader.frag"); // Load and compile pair of shaders
 				toonProgram = GLProgram::genVFProgram ("Cartoon GL Program", "shader_cartoon.vert", "shader_cartoon.frag");
 				toon_outlines_Program = GLProgram::genVFProgram ("Outline GL Program", "shader_outline_cartoon.vert", "shader_outline_cartoon.frag");
+				bvhProgram = GLProgram::genVFProgram ("BVH GL Program", "shader_bvh.vert", "shader_bvh.frag");
 				glProgram->use (); // Activate the shader program
     } catch (Exception & e) {
         cerr << e.msg () << endl;
     }
 
-		//unsigned int deep_count1 = 0;
-		//big_bvh = buildBVH( mesh.triangles(), deep_count1);
-		//cout << "BVH has been built." << '\n';
-		//cout << "deep_count of BVH is " << deep_count << '\n';
+		unsigned int deep_count1 = 0;
+		big_bvh = buildBVH( mesh.triangles(), deep_count1);
+		cout << "BVH has been built." << '\n';
+		cout << "deep_count of BVH is " << deep_count << '\n';
 
 		//8 light sources maximum
 		lightSources.resize(8);
@@ -430,6 +460,9 @@ void renderScene () {
 		}else{
 			glCullFace (GL_FRONT);
 			toon_outlines_Program->use();
+			glVertexPointer (3, GL_FLOAT, sizeof (Vec3f), (GLvoid*)(&(mesh.positions()[0])));
+	    glNormalPointer (GL_FLOAT, 3*sizeof (float), (GLvoid*)&(mesh.normals()[0]));
+			glColorPointer (4, GL_FLOAT, sizeof (Vec4f), (GLvoid*)(&(colorResponses[0])));
 			glDrawElements (GL_TRIANGLES, 3*mesh.triangles().size(), GL_UNSIGNED_INT, (GLvoid*)((&mesh.triangles()[0])));
 
 			glCullFace (GL_BACK);
@@ -451,6 +484,11 @@ void renderScene () {
     //glColorPointer (3, GL_FLOAT, sizeof (Vec3f), (GLvoid*)(&(colorResponses[0])));
 		glColorPointer (4, GL_FLOAT, sizeof (Vec4f), (GLvoid*)(&(colorResponses[0])));
     glDrawElements (GL_TRIANGLES, 3*mesh.triangles().size(), GL_UNSIGNED_INT, (GLvoid*)((&mesh.triangles()[0])));
+
+		bvhProgram->use();
+		glVertexPointer (3, GL_FLOAT, sizeof (Vec3f), (GLvoid*)(&(BVH::bvh_positions[0])));
+    //glDrawElements (GL_LINES, BVH::bvh_indices.size(), GL_UNSIGNED_INT, (GLvoid*)((&BVH::bvh_indices[0])));
+		glDrawElements (GL_LINE_LOOP, BVH::bvh_indices.size(), GL_UNSIGNED_INT, (GLvoid*)((&BVH::bvh_indices[0])));
 }
 
 void reshape(int w, int h) {
@@ -538,6 +576,10 @@ void key (unsigned char keyPressed, int x, int y) {
 				break;
 		case 't':
 				cartoon_mode = ! cartoon_mode;
+				break;
+		case 'g':
+				big_bvh->drawBVH();
+				break;
     default:
         printUsage ();
         break;

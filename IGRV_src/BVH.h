@@ -8,9 +8,18 @@ private:
   bool isLeaf = false;
   Triangle triangle;
 
-  //AxisAlignedBoundingBox calculateBoundingBox();
-  //void redistributeTriangles();
+  static void drawCube(const Vec3f & min_p, const Vec3f & max_p);
+
 public:
+  static std::vector<Vec3f> bvh_positions;
+  static std::vector<unsigned int> bvh_indices;
+
   BVH(AxisAlignedBoundingBox bbox, Triangle triangle): bbox(bbox), isLeaf(true), triangle(triangle) {}
   BVH(AxisAlignedBoundingBox bbox, BVH * l, BVH * r): bbox(bbox), leftChild(l), rightChild(r) {}
+  BVH * getLeftChild() {return leftChild;}
+  BVH * getRightChild() {return rightChild;}
+  AxisAlignedBoundingBox getAABB() {return bbox;}
+  bool isALeaf() {return isLeaf;}
+  Triangle getTriangle() {return triangle;}
+  void drawBVH();
 };
