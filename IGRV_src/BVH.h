@@ -20,6 +20,7 @@ private:
                                 const std::vector<Triangle> & t, const int & axis, const Vec3f & max_p, const Vec3f & min_p, const Mesh & mesh);
   static void drawCube(const Vec3f & min_p, const Vec3f & max_p);
   static void drawCube(BVH * const bvh);
+  static unsigned int deepToNumberOfNodes(unsigned int currentDeep);
 
 public:
   static std::vector<Vec3f> bvh_positions;
@@ -27,12 +28,11 @@ public:
   static unsigned int deep_count;
 
   static BVH * buildBVH(const std::vector<Triangle> & t, const Mesh & mesh, unsigned int deep_count1);
-  static unsigned int deepToNumberOfNodes(unsigned int currentDeep);
 
   BVH * getLeftChild() {return leftChild;}
   BVH * getRightChild() {return rightChild;}
   AxisAlignedBoundingBox getAABB() {return bbox;}
   bool isALeaf() {return isLeaf;}
   Triangle getTriangle() {return triangle;}
-  void drawBVH(unsigned int numberOfNodes);
+  void drawBVH(unsigned int currentDeep);
 };

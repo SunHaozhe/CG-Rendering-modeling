@@ -77,12 +77,14 @@ BVH * BVH::buildBVH(const vector<Triangle> & t, const Mesh & mesh, unsigned int 
 	}
 }
 
-void BVH::drawBVH(unsigned int numberOfNodes){
+void BVH::drawBVH(unsigned int currentDeep){
   unsigned int k = 0;
   bvh_positions.clear();
   bvh_indices.clear();
 
-  if( numberOfNodes == 0 ) return;
+	unsigned int numberOfNodes = deepToNumberOfNodes(currentDeep);
+	if( numberOfNodes == 0 ) return;
+	unsigned int numberOfNodesOfPreviousLayer = deepToNumberOfNodes(currentDeep - 1);
 
   //BFS
   std::queue<BVH *> visited, unvisited;
@@ -93,7 +95,7 @@ void BVH::drawBVH(unsigned int numberOfNodes){
     if (current->getLeftChild()  != nullptr) unvisited.push( current->getLeftChild()  );
     if (current->getRightChild() != nullptr) unvisited.push( current->getRightChild() );
     visited.push(current);
-    drawCube(current);
+		if( k >= numberOfNodesOfPreviousLayer ) drawCube(current);
     unvisited.pop();
     k++;
     if( k >= numberOfNodes ) break;

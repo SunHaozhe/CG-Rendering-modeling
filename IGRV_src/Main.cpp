@@ -109,8 +109,8 @@ void printUsage () {
 				 << " <u>: decrease Fresnel refraction index F0 for micro facet mode"<< std::endl
 				 << " <s>: active shadow mode (per vertex shadow)"<< std::endl
 				 << " <o>: active Ambient occlusion mode (per vertex AO)"<< std::endl
-				 << " <g>: visualize Bounding Bolume Hierarchy (BVH), one more layer visualized for every click"<< std::endl
-				 << " <h>: remove one layer for the visualization of Bounding Bolume Hierarchy (BVH)"<< std::endl
+				 << " <g>: visualize Bounding Bolume Hierarchy (BVH), increase depth of visualization"<< std::endl
+				 << " <h>: visualize Bounding Bolume Hierarchy (BVH), decrease depth of visualization"<< std::endl
 				 << " <t>: active cartoon mode"<< std::endl
          << " <q>, <esc>: Quit" << std::endl << std::endl;
 }
@@ -478,13 +478,15 @@ void key (unsigned char keyPressed, int x, int y) {
 				cartoon_mode = ! cartoon_mode;
 				break;
 		case 'g':
-				currentDeep++;
-				big_bvh->drawBVH( BVH::deepToNumberOfNodes(currentDeep) );
+				if( currentDeep <= BVH::deep_count ){
+					currentDeep++;
+					big_bvh->drawBVH(currentDeep);
+				}
 				break;
 		case 'h':
 				if( currentDeep > 0 ){
 					currentDeep--;
-					big_bvh->drawBVH( BVH::deepToNumberOfNodes(currentDeep) );
+					big_bvh->drawBVH(currentDeep);
 				}
 				break;
     default:
