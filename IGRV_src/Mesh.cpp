@@ -92,6 +92,7 @@ void Mesh::topologicalLaplacianFilter (float laplace_alpha){
   for(unsigned int i = 0; i < m_positions.size(); i++) new_positions[i] /= counts_neighbers[i];
   for(unsigned int i = 0; i < m_positions.size(); i++) delta[i] = m_positions[i] - new_positions[i];
   for(unsigned int i = 0; i < m_positions.size(); i++) m_positions[i] -= laplace_alpha * delta[i];
+  recomputeNormals();
 }
 
 void Mesh::reloadOFF(){
