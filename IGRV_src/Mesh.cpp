@@ -1,12 +1,12 @@
 // --------------------------------------------------------------------------
 // Copyright(C) 2009-2016
 // Tamy Boubekeur
-// 
-// Permission granted to use this code only for teaching projects and 
+//
+// Permission granted to use this code only for teaching projects and
 // private practice.
 //
-// Do not distribute this code outside the teaching assignements.                                                                           
-// All rights reserved.                                                       
+// Do not distribute this code outside the teaching assignements.
+// All rights reserved.
 // --------------------------------------------------------------------------
 
 #include "Mesh.h"
@@ -26,7 +26,7 @@ void Mesh::clear () {
 void Mesh::loadOFF (const std::string & filename) {
     clear ();
 	ifstream in (filename.c_str ());
-    if (!in) 
+    if (!in)
         exit (1);
 	string offString;
     unsigned int sizeV, sizeT, tmp;
@@ -38,12 +38,13 @@ void Mesh::loadOFF (const std::string & filename) {
     int s;
     for (unsigned int i = 0; i < sizeT; i++) {
         in >> s;
-        for (unsigned int j = 0; j < 3; j++) 
+        for (unsigned int j = 0; j < 3; j++)
             in >> m_triangles[i][j];
     }
     in.close ();
     centerAndScaleToUnit ();
     recomputeNormals ();
+    loaded_filename = filename;
 }
 
 void Mesh::recomputeNormals () {
@@ -74,4 +75,25 @@ void Mesh::centerAndScaleToUnit () {
     }
     for  (unsigned int i = 0; i < m_positions.size (); i++)
         m_positions[i] = (m_positions[i] - c) / maxD;
+}
+
+void Mesh::topologicalLaplacianFilter (float laplace_alpha){
+  vector<Vec3f> new_positions(m_positions.size(), Vec3f(0.0f, 0.0f, 0.0f) );
+  vector<Vec3f> delta(m_positions.size(), Vec3f(0.0f, 0.0f, 0.0f) );
+  vector<unsigned int> counts_neighbers(m_positions.size(), 0);
+  for(unsigned int index = 0; index < m_triangles.size(); index++){
+    for(unsigned int i = 0; i < 3; i++){
+      unsigned int edge_index_i = m_triangles[index][i];
+      unsigned int edge_index_j = (i == 2) ? m_triangles[index][0] : m_triangles[index][i + 1];
+      new_positions[edge_index_j] += m_positions[edge_index_i];
+      counts_neighbers[edge_index_j] += 1;
+    }
+  }
+  for(unsigned int i = 0; i < m_positions.size(); i++) new_positions[i] /= counts_neighbers[i];
+  for(unsigned int i = 0; i < m_positions.size(); i++) delta[i] = m_positions[i] - new_positions[i];
+  for(unsigned int i = 0; i < m_positions.size(); i++) m_positions[i] -= laplace_alpha * delta[i];
+}
+
+void Mesh::reloadOFF(){
+  loadOFF(loaded_filename);
 }

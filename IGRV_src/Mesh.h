@@ -40,8 +40,15 @@ public:
     /// scale to the unit cube and center at original
     void centerAndScaleToUnit ();
 
+    // Topological laplace operator
+    void topologicalLaplacianFilter (float laplace_alpha);
+
+    void reloadOFF();
+
+
 private:
     std::vector<Vec3f> m_positions;
     std::vector<Vec3f> m_normals;
     std::vector<Triangle> m_triangles;
+    std::string loaded_filename;
 };

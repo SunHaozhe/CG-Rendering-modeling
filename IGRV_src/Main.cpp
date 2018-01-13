@@ -80,6 +80,7 @@ static bool perVertexShadow = true;  //Shadow mode (true by default)
 static bool renderShadowOnlyInInit = true;  //Render shadow only in the beginning of the program or in every frame ( calls of function renderScene() )
 static bool perVertexAO = true;     //Ambient occlusion mode (true by default)
 static bool cartoon_mode = false;   //cartoon mode
+static bool planIsNeeded = false;
 
 //coefficients for attenuation, aq the coefficient for d^2, al the coefficient for d, ac the constant coefficient, where d means the distance between the vertex and the light source
 //static const float ac = 0;
@@ -109,8 +110,8 @@ void printUsage () {
 				 << " <u>: decrease Fresnel refraction index F0 for micro facet mode"<< std::endl
 				 << " <s>: active shadow mode (per vertex shadow)"<< std::endl
 				 << " <o>: active Ambient occlusion mode (per vertex AO)"<< std::endl
-				 << " <g>: visualize Bounding Bolume Hierarchy (BVH), increase depth of visualization"<< std::endl
-				 << " <h>: visualize Bounding Bolume Hierarchy (BVH), decrease depth of visualization"<< std::endl
+				 << " <l>: visualize Bounding Bolume Hierarchy (BVH), increase depth of visualization"<< std::endl
+				 << " <m>: visualize Bounding Bolume Hierarchy (BVH), decrease depth of visualization"<< std::endl
 				 << " <t>: active cartoon mode"<< std::endl
          << " <q>, <esc>: Quit" << std::endl << std::endl;
 }
@@ -214,7 +215,7 @@ void init (const char * modelFilename) {
     glClearColor (0.0f, 0.0f, 0.0f, 1.0f); // Background color
 
 		mesh.loadOFF (modelFilename);
-		addPlane(mesh);			//adds a plane
+		if(planIsNeeded) addPlane(mesh);			//adds a plane
     colorResponses.resize (mesh.positions().size());
     camera.resize (DEFAULT_SCREENWIDTH, DEFAULT_SCREENHEIGHT);
 
@@ -477,17 +478,30 @@ void key (unsigned char keyPressed, int x, int y) {
 		case 't':
 				cartoon_mode = ! cartoon_mode;
 				break;
-		case 'g':
+		case 'l':
 				if( currentDeep <= BVH::deep_count ){
 					currentDeep++;
 					big_bvh->drawBVH(currentDeep);
 				}
 				break;
-		case 'h':
+		case 'm':
 				if( currentDeep > 0 ){
 					currentDeep--;
 					big_bvh->drawBVH(currentDeep);
 				}
+				break;
+		case 49: //1
+				mesh.topologicalLaplacianFilter(0.1f);
+				break;
+		case 50: //2
+				mesh.topologicalLaplacianFilter(0.5f);
+				break;
+		case 51: // 3
+				mesh.topologicalLaplacianFilter(1.0f);
+				break;
+		case 48: //0
+				mesh.reloadOFF ();
+				if(planIsNeeded) addPlane(mesh);			//adds a plane
 				break;
     default:
         printUsage ();
