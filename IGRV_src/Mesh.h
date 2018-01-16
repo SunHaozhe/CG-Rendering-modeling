@@ -12,6 +12,7 @@
 #pragma once
 #include <cmath>
 #include <vector>
+#include <map>
 #include "Vec3.h"
 #include "Triangle.h"
 
@@ -45,10 +46,16 @@ public:
 
     void reloadOFF();
 
+    // Geometric laplace operator
+    void geometricLaplacianFilter (float laplace_alpha);
+
 
 private:
     std::vector<Vec3f> m_positions;
     std::vector<Vec3f> m_normals;
     std::vector<Triangle> m_triangles;
     std::string loaded_filename;
+
+    std::pair<int, int> pair_maker(int a, int b);
+    float getCotan(Vec3f v1, Vec3f v2);
 };

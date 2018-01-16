@@ -113,6 +113,13 @@ void printUsage () {
 				 << " <l>: visualize Bounding Bolume Hierarchy (BVH), increase depth of visualization"<< std::endl
 				 << " <m>: visualize Bounding Bolume Hierarchy (BVH), decrease depth of visualization"<< std::endl
 				 << " <t>: active cartoon mode"<< std::endl
+				 << " <0>: reload the original model"<< std::endl
+				 << " <1>: topological Laplace filtre with step size of 0.1"<< std::endl
+				 << " <2>: topological Laplace filtre with step size of 0.5"<< std::endl
+				 << " <3>: topological Laplace filtre with step size of 1.0"<< std::endl
+				 << " <4>: geometric Laplace filtre with step size of 0.1"<< std::endl
+				 << " <5>: geometric Laplace filtre with step size of 0.5"<< std::endl
+				 << " <6>: geometric Laplace filtre with step size of 1.0"<< std::endl
          << " <q>, <esc>: Quit" << std::endl << std::endl;
 }
 
@@ -490,6 +497,10 @@ void key (unsigned char keyPressed, int x, int y) {
 					big_bvh->drawBVH(currentDeep);
 				}
 				break;
+		case 48: //0
+				mesh.reloadOFF ();
+				if(planIsNeeded) addPlane(mesh);			//adds a plane
+				break;
 		case 49: //1
 				mesh.topologicalLaplacianFilter(0.1f);
 				break;
@@ -499,9 +510,14 @@ void key (unsigned char keyPressed, int x, int y) {
 		case 51: // 3
 				mesh.topologicalLaplacianFilter(1.0f);
 				break;
-		case 48: //0
-				mesh.reloadOFF ();
-				if(planIsNeeded) addPlane(mesh);			//adds a plane
+		case 52: //4
+				mesh.geometricLaplacianFilter(0.1f);
+				break;
+		case 53: //5
+				mesh.geometricLaplacianFilter(0.5f);
+				break;
+		case 54: //6
+				mesh.geometricLaplacianFilter(1.0f);
 				break;
     default:
         printUsage ();
