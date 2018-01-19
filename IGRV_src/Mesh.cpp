@@ -14,6 +14,7 @@
 #include <fstream>
 #include <cstdlib>
 #include <string>
+#include <limits>
 
 using namespace std;
 
@@ -139,4 +140,92 @@ pair<int, int> Mesh::pair_maker(int a, int b){
 float Mesh::getCotan(Vec3f v1, Vec3f v2){
   float angle = acosf(dot(v1, v2) / sqrt(length(v1) * length(v2)));
   return cos(angle) / sin(angle);
+}
+
+void Mesh::calculateMinMax(Vec3f & min_p, Vec3f & max_p){
+	for(unsigned int i = 0; i < m_triangles.size(); i++){
+		if( max_p[0] < m_positions[ m_triangles[i][0] ][0] ) max_p[0] = m_positions[ m_triangles[i][0] ][0];
+		if( max_p[1] < m_positions[ m_triangles[i][0] ][1] ) max_p[1] = m_positions[ m_triangles[i][0] ][1];
+		if( max_p[2] < m_positions[ m_triangles[i][0] ][2] ) max_p[2] = m_positions[ m_triangles[i][0] ][2];
+		if( min_p[0] > m_positions[ m_triangles[i][0] ][0] ) min_p[0] = m_positions[ m_triangles[i][0] ][0];
+		if( min_p[1] > m_positions[ m_triangles[i][0] ][1] ) min_p[1] = m_positions[ m_triangles[i][0] ][1];
+		if( min_p[2] > m_positions[ m_triangles[i][0] ][2] ) min_p[2] = m_positions[ m_triangles[i][0] ][2];
+
+		if( max_p[0] < m_positions[ m_triangles[i][1] ][0] ) max_p[0] = m_positions[ m_triangles[i][1] ][0];
+		if( max_p[1] < m_positions[ m_triangles[i][1] ][1] ) max_p[1] = m_positions[ m_triangles[i][1] ][1];
+		if( max_p[2] < m_positions[ m_triangles[i][1] ][2] ) max_p[2] = m_positions[ m_triangles[i][1] ][2];
+		if( min_p[0] > m_positions[ m_triangles[i][1] ][0] ) min_p[0] = m_positions[ m_triangles[i][1] ][0];
+		if( min_p[1] > m_positions[ m_triangles[i][1] ][1] ) min_p[1] = m_positions[ m_triangles[i][1] ][1];
+		if( min_p[2] > m_positions[ m_triangles[i][1] ][2] ) min_p[2] = m_positions[ m_triangles[i][1] ][2];
+
+		if( max_p[0] < m_positions[ m_triangles[i][2] ][0] ) max_p[0] = m_positions[ m_triangles[i][2] ][0];
+		if( max_p[1] < m_positions[ m_triangles[i][2] ][1] ) max_p[1] = m_positions[ m_triangles[i][2] ][1];
+		if( max_p[2] < m_positions[ m_triangles[i][2] ][2] ) max_p[2] = m_positions[ m_triangles[i][2] ][2];
+		if( min_p[0] > m_positions[ m_triangles[i][2] ][0] ) min_p[0] = m_positions[ m_triangles[i][2] ][0];
+		if( min_p[1] > m_positions[ m_triangles[i][2] ][1] ) min_p[1] = m_positions[ m_triangles[i][2] ][1];
+		if( min_p[2] > m_positions[ m_triangles[i][2] ][2] ) min_p[2] = m_positions[ m_triangles[i][2] ][2];
+	}
+}
+
+void Mesh::make_cubes(float & x_scale, float & y_scale, float & z_scale, unsigned int resolution, Vec3f & min_p){
+  float max_float = numeric_limits<float>::max();
+	float min_float =  - ( numeric_limits<float>::max() - 1);
+	Vec3f max_p = Vec3f(min_float, min_float, min_float);
+	min_p = Vec3f(max_float, max_float, max_float);
+	calculateMinMax(min_p, max_p);
+  min_p -= (max_p - min_p) * 0.05f;
+  max_p += (max_p - min_p) * 0.05f;
+  x_scale = (max_p[0] - min_p[0]) / (float) resolution;
+  y_scale = (max_p[1] - min_p[1]) / (float) resolution;
+  z_scale = (max_p[2] - min_p[2]) / (float) resolution;
+}
+
+void Mesh::push_vertices_into_cubes(UGrid & grid, unsigned int resolution, float x_scale, float y_scale, float z_scale, vector<unsigned int> & index_map, Vec3f & min_p){
+  for(unsigned int index = 0; index < m_triangles.size(); index++){
+    for(unsigned int i = 0; i < 3; i++){
+      Vec3f vertex_position = m_positions[ m_triangles[index][i] ];
+      unsigned int x = (vertex_position[0] - min_p[0]) / x_scale;
+      unsigned int y = (vertex_position[1] - min_p[1]) / y_scale;
+      unsigned int z = (vertex_position[2] - min_p[2]) / z_scale;
+      grid.getCell(x, y, z).addNewVertex(m_triangles[index][i], vertex_position);
+      index_map[m_triangles[index][i]] = z + y * resolution + x * resolution * resolution;
+    }
+  }
+}
+
+void Mesh::calculate_new_positions(vector<Vec3f> & new_positions, UGrid & grid){
+  for(unsigned int x = 0; x < grid.nx; x++){
+    for(unsigned int y = 0; y < grid.ny; y++){
+      for(unsigned int z = 0; z < grid.nz; z++){
+        new_positions.push_back(grid.getCell(x, y, z).meanPosition);
+      }
+    }
+  }
+}
+
+void Mesh::reindex(const vector<unsigned int> & index_map, vector<Triangle> & new_triangles){
+  for(unsigned int index = 0; index < m_triangles.size(); index++){
+    if(index_map[m_triangles[index][0]] != index_map[m_triangles[index][1]] &&
+       index_map[m_triangles[index][1]] != index_map[m_triangles[index][2]] &&
+       index_map[m_triangles[index][0]] != index_map[m_triangles[index][2]] ){
+       new_triangles.push_back(Triangle(index_map[m_triangles[index][0]], index_map[m_triangles[index][1]], index_map[m_triangles[index][2]] ) );
+    }
+  }
+}
+
+void Mesh::simplify(unsigned int resolution){
+  vector<Vec3f> new_positions;
+  vector<Triangle> new_triangles;
+  vector<unsigned int> index_map(3 * m_triangles.size());
+  UGrid grid(resolution, resolution, resolution);
+  Vec3f min_p;
+	float x_scale, y_scale, z_scale;
+  make_cubes(x_scale, y_scale, z_scale, resolution, min_p);
+  push_vertices_into_cubes(grid, resolution, x_scale, y_scale, z_scale, index_map, min_p);
+  calculate_new_positions(new_positions, grid);
+  reindex(index_map, new_triangles);
+
+  new_positions.swap(m_positions);
+  new_triangles.swap(m_triangles);
+  recomputeNormals();
 }

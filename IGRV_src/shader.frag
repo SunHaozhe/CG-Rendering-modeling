@@ -19,6 +19,8 @@ const vec3 matAlbedo = vec3 (0.8, 0.2, 0.3);
 const float pi = 3.1415927;
 const float ambient_lighting_coefficient = 0.7;
 
+uniform bool renderMode;
+
 //coefficients for attenuation, aq the coefficient for d^2, al the coefficient for d, ac the constant coefficient, where d means the distance between the vertex and the light source
 const float ac = 0.0;
 const float al = 1.0;
@@ -118,5 +120,24 @@ void main (void) {
 			color = calculateColor();
 			color = color * (1.0 - abs(C.r) * ambient_lighting_coefficient );
 	}
-	gl_FragColor = vec4(color, 1.0);
+	if(renderMode == true) gl_FragColor = vec4(color, 1.0);
+	else{
+		vec3 x = vec3 (gl_ModelViewMatrix * P);       //x
+		vec3 n = normalize (gl_NormalMatrix * N);     //n
+		vec3 wo = normalize (-x);                      //wo
+		vec3 light_pos = lightPositions[0];
+		vec3 wi = normalize (light_pos - x);            //wi
+		vec3 wh = normalize (wi + wo);                          //wh
+
+		float d = length(light_pos - x);
+		float attenuation = 1.0 / (ac + al * d + aq * d * d);
+		vec3 Li = lightColors[0];
+		float fs;
+
+		if(microFacet == false) fs = ks * pow(dot(n, wh), s);						//Blinn-Phong BRDF (specular)
+		else fs = microFacetFs(n, wi, wo, wh);
+
+		vec3 color = Li * (fd + fs) * max(dot(n, wi), 0.0) * attenuation;
+		gl_FragColor = vec4(color, 1.0);
+	}
 }

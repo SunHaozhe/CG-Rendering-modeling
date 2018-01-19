@@ -32,7 +32,7 @@ using namespace std;
 
 static const unsigned int DEFAULT_SCREENWIDTH = 1024;
 static const unsigned int DEFAULT_SCREENHEIGHT = 768;
-static const string DEFAULT_MESH_FILE ("models/monkey.off");
+static const string DEFAULT_MESH_FILE ("../mesh_collection/max_50K.off");
 
 static const string appTitle ("Informatique Graphique & Realite Virtuelle - Travaux Pratiques - Algorithmes de Rendu");
 static const string myName ("Haozhe Sun");
@@ -80,7 +80,7 @@ static bool perVertexShadow = true;  //Shadow mode (true by default)
 static bool renderShadowOnlyInInit = true;  //Render shadow only in the beginning of the program or in every frame ( calls of function renderScene() )
 static bool perVertexAO = true;     //Ambient occlusion mode (true by default)
 static bool cartoon_mode = false;   //cartoon mode
-static bool planIsNeeded = false;
+static bool renderMode = false;
 
 //coefficients for attenuation, aq the coefficient for d^2, al the coefficient for d, ac the constant coefficient, where d means the distance between the vertex and the light source
 //static const float ac = 0;
@@ -120,6 +120,7 @@ void printUsage () {
 				 << " <4>: geometric Laplace filtre with step size of 0.1"<< std::endl
 				 << " <5>: geometric Laplace filtre with step size of 0.5"<< std::endl
 				 << " <6>: geometric Laplace filtre with step size of 1.0"<< std::endl
+				 << " <7>: simplification with a uniform grid"<< std::endl
          << " <q>, <esc>: Quit" << std::endl << std::endl;
 }
 
@@ -222,7 +223,7 @@ void init (const char * modelFilename) {
     glClearColor (0.0f, 0.0f, 0.0f, 1.0f); // Background color
 
 		mesh.loadOFF (modelFilename);
-		if(planIsNeeded) addPlane(mesh);			//adds a plane
+		if(renderMode) addPlane(mesh);			//adds a plane
     colorResponses.resize (mesh.positions().size());
     camera.resize (DEFAULT_SCREENWIDTH, DEFAULT_SCREENHEIGHT);
 
@@ -250,7 +251,7 @@ void init (const char * modelFilename) {
 		//lightSources[2] = LightSource(Vec3f(-2.0f, -1.0f, -1.0f), Vec3f(1.0f, 0.8f, 1.0f));
 		//lightSources[2].activeLightSource();
 
-		if(renderShadowOnlyInInit == true){
+		if(renderShadowOnlyInInit == true && renderMode == true){
 			if(perVertexAO == true) computePerVertexAO(nb_samples_AO, radius_AO, mesh);
 			if(perVertexShadow == true) computePerVertexShadow(mesh);
 		}
@@ -367,6 +368,7 @@ void renderScene () {
 			glProgram->setUniform1i("schlick", schlick);
 			glProgram->setUniform1i("perVertexShadow", perVertexShadow);
 			glProgram->setUniform1i("perVertexAO", perVertexAO);
+			glProgram->setUniform1i("renderMode", renderMode);
 		}else{
 			glCullFace (GL_FRONT);
 			toon_outlines_Program->use();
@@ -499,7 +501,7 @@ void key (unsigned char keyPressed, int x, int y) {
 				break;
 		case 48: //0
 				mesh.reloadOFF ();
-				if(planIsNeeded) addPlane(mesh);			//adds a plane
+				if(renderMode) addPlane(mesh);			//adds a plane
 				break;
 		case 49: //1
 				mesh.topologicalLaplacianFilter(0.1f);
@@ -518,6 +520,9 @@ void key (unsigned char keyPressed, int x, int y) {
 				break;
 		case 54: //6
 				mesh.geometricLaplacianFilter(1.0f);
+				break;
+		case 55: //7
+				mesh.simplify(16);
 				break;
     default:
         printUsage ();
