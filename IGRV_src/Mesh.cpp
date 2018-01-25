@@ -187,17 +187,18 @@ void Mesh::push_vertices_into_cubes(UGrid & grid, unsigned int resolution, float
       unsigned int x = (vertex_position[0] - min_p[0]) / x_scale;
       unsigned int y = (vertex_position[1] - min_p[1]) / y_scale;
       unsigned int z = (vertex_position[2] - min_p[2]) / z_scale;
-      grid.getCell(x, y, z).addNewVertex(m_triangles[index][i], vertex_position);
+      grid.getCell(x, y, z).addNewVertex(m_triangles[index][i], vertex_position, m_normals[ m_triangles[index][i] ]);
       index_map[m_triangles[index][i]] = z + y * resolution + x * resolution * resolution;
     }
   }
 }
 
-void Mesh::calculate_new_positions(vector<Vec3f> & new_positions, UGrid & grid){
+void Mesh::calculate_new_positions(vector<Vec3f> & new_positions, vector<Vec3f> & new_normals, UGrid & grid){
   for(unsigned int x = 0; x < grid.nx; x++){
     for(unsigned int y = 0; y < grid.ny; y++){
       for(unsigned int z = 0; z < grid.nz; z++){
         new_positions.push_back(grid.getCell(x, y, z).meanPosition);
+        new_normals.push_back(grid.getCell(x, y, z).meanNormal);
       }
     }
   }
@@ -216,14 +217,88 @@ void Mesh::reindex(const vector<unsigned int> & index_map, vector<Triangle> & ne
 void Mesh::simplify(unsigned int resolution){
   vector<Vec3f> new_positions;
   vector<Triangle> new_triangles;
+  vector<Vec3f> new_normals;
   vector<unsigned int> index_map(3 * m_triangles.size());
   UGrid grid(resolution, resolution, resolution);
   Vec3f min_p;
 	float x_scale, y_scale, z_scale;
   make_cubes(x_scale, y_scale, z_scale, resolution, min_p);
   push_vertices_into_cubes(grid, resolution, x_scale, y_scale, z_scale, index_map, min_p);
-  calculate_new_positions(new_positions, grid);
+  calculate_new_positions(new_positions, new_normals, grid);
+  for(unsigned int i = 0; i < new_normals.size(); i++) new_normals[i].normalize();
   reindex(index_map, new_triangles);
+
+  new_positions.swap(m_positions);
+  new_triangles.swap(m_triangles);
+  new_normals.swap(m_normals);
+}
+
+void Mesh::addOddVertices(map<pair<int, int>, Vec3f> & oddVertices, map<pair<int, int>, unsigned int> & oddVertexIndices, vector<Vec3f> & new_positions){
+  for(unsigned int index = 0; index < m_triangles.size(); index++){
+    for(unsigned int i = 0; i < 3; i++){
+      unsigned int edge_index_i = m_triangles[index][i];
+      unsigned int edge_index_j = (i == 2) ? m_triangles[index][0] : m_triangles[index][i + 1];
+      unsigned int third_vertex_index = (i == 0) ? m_triangles[index][2] : m_triangles[index][i - 1];
+      oddVertices[pair_maker(edge_index_i, edge_index_j)] += (1.0f / 8.0f) * m_positions[third_vertex_index] + (3.0f / 16.0f) * (m_positions[edge_index_i] + m_positions[edge_index_j]);
+    }
+  }
+  for(auto it : oddVertices){
+    oddVertexIndices[it.first] = new_positions.size();
+    new_positions.push_back(it.second);
+  }
+}
+
+void Mesh::updateEvenVertices(vector<unsigned int> & valence, vector<Vec3f> & new_positions){
+  for(unsigned int index = 0; index < m_triangles.size(); index++){
+    for(unsigned int i = 0; i < 3; i++){
+      unsigned int edge_index_j = (i == 2) ? m_triangles[index][0] : m_triangles[index][i + 1];
+      valence[edge_index_j] += 1;
+    }
+  }
+  for(unsigned int index = 0; index < m_triangles.size(); index++){
+    for(unsigned int i = 0; i < 3; i++){
+      unsigned int edge_index_j = (i == 2) ? m_triangles[index][0] : m_triangles[index][i + 1];
+      unsigned int n = valence[edge_index_j];
+      if( length(new_positions[edge_index_j] - m_positions[edge_index_j]) < length(m_positions[edge_index_j]) * 0.01f ) new_positions[edge_index_j] *= (1.0f - getAlpha(n));
+    }
+  }
+  for(unsigned int index = 0; index < m_triangles.size(); index++){
+    for(unsigned int i = 0; i < 3; i++){
+      unsigned int edge_index_i = m_triangles[index][i];
+      unsigned int edge_index_j = (i == 2) ? m_triangles[index][0] : m_triangles[index][i + 1];
+      unsigned int n = valence[edge_index_j];
+      new_positions[edge_index_j] += m_positions[edge_index_i] * (getAlpha(n) / (float) n);
+    }
+  }
+}
+
+void Mesh::reindex_subdivision(map<pair<int, int>, unsigned int> & oddVertexIndices, vector<Triangle> & new_triangles){
+  for(unsigned int i = 0; i < m_triangles.size(); i++){
+    unsigned int index0 = m_triangles[i][0];
+    unsigned int index1 = m_triangles[i][1];
+    unsigned int index2 = m_triangles[i][2];
+    unsigned int odd0 = oddVertexIndices[pair_maker(index0, index1)];
+    unsigned int odd1 = oddVertexIndices[pair_maker(index1, index2)];
+    unsigned int odd2 = oddVertexIndices[pair_maker(index2, index0)];
+    new_triangles.push_back(Triangle(index0, odd0, odd2));
+    new_triangles.push_back(Triangle(odd0, index1, odd1));
+    new_triangles.push_back(Triangle(odd2, odd1, index2));
+    new_triangles.push_back(Triangle(odd0, odd1, odd2));
+  }
+}
+
+void Mesh::subdivide(){
+  map<pair<int, int>, Vec3f> oddVertices;
+  map<pair<int, int>, unsigned int> oddVertexIndices;
+  vector<Vec3f> new_positions;
+  vector<Triangle> new_triangles;
+  vector<unsigned int> valence(m_positions.size(), 0);
+
+  new_positions = m_positions;
+
+  addOddVertices(oddVertices, oddVertexIndices, new_positions);
+  updateEvenVertices(valence, new_positions);
+  reindex_subdivision(oddVertexIndices, new_triangles);
 
   new_positions.swap(m_positions);
   new_triangles.swap(m_triangles);
