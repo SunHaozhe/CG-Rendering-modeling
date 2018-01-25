@@ -120,7 +120,10 @@ void printUsage () {
 				 << " <4>: geometric Laplace filtre with step size of 0.1"<< std::endl
 				 << " <5>: geometric Laplace filtre with step size of 0.5"<< std::endl
 				 << " <6>: geometric Laplace filtre with step size of 1.0"<< std::endl
-				 << " <7>: simplification with a uniform grid"<< std::endl
+				 << " <7>: simplification 16*16*16 with a uniform grid"<< std::endl
+				 << " <8>: simplification 32*32*32 with a uniform grid"<< std::endl
+				 << " <9>: simplification 64*64*64 with a uniform grid"<< std::endl
+				 << " <g>: Loop subdivision"<< std::endl
          << " <q>, <esc>: Quit" << std::endl << std::endl;
 }
 
@@ -391,6 +394,7 @@ void renderScene () {
 			if(perVertexShadow == true) computePerVertexShadow(mesh);
 		}
 
+		colorResponses.resize(4 * mesh.positions().size());
     glVertexPointer (3, GL_FLOAT, sizeof (Vec3f), (GLvoid*)(&(mesh.positions()[0])));
     glNormalPointer (GL_FLOAT, 3*sizeof (float), (GLvoid*)&(mesh.normals()[0]));
 		glColorPointer (4, GL_FLOAT, sizeof (Vec4f), (GLvoid*)(&(colorResponses[0])));
@@ -523,6 +527,15 @@ void key (unsigned char keyPressed, int x, int y) {
 				break;
 		case 55: //7
 				mesh.simplify(16);
+				break;
+		case 56: //8
+				mesh.simplify(32);
+				break;
+		case 57: //9
+				mesh.simplify(64);
+				break;
+		case 'g':
+				mesh.subdivide();
 				break;
     default:
         printUsage ();
