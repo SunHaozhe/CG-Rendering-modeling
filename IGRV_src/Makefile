@@ -1,5 +1,5 @@
 CIBLE = main
-SRCS =  Main.cpp Camera.cpp Mesh.cpp GLProgram.cpp GLShader.cpp GLError.cpp LightSource.cpp Ray.cpp BVH.cpp
+SRCS =  Main.cpp Camera.cpp Mesh.cpp GLProgram.cpp GLShader.cpp GLError.cpp LightSource.cpp Ray.cpp BVH.cpp OctreeNode.cpp
 OPENGL_PATH = /usr/lib/nvidia-367 # change this for your own environment
 LIBS = -L$(OPENGL_PATH) -lglut -lGLU -lGL -lm -lpthread /usr/lib/x86_64-linux-gnu/libGLEW.so.2.0
 

@@ -123,6 +123,8 @@ void printUsage () {
 				 << " <7>: simplification 16*16*16 with a uniform grid"<< std::endl
 				 << " <8>: simplification 32*32*32 with a uniform grid"<< std::endl
 				 << " <9>: simplification 64*64*64 with a uniform grid"<< std::endl
+				 << " <a>: adaptive simplification with 5 as max number per leaf"<< std::endl
+				 << " <z>: adaptive simplification with 20 as max number per leaf"<< std::endl
 				 << " <g>: Loop subdivision"<< std::endl
          << " <q>, <esc>: Quit" << std::endl << std::endl;
 }
@@ -244,6 +246,19 @@ void init (const char * modelFilename) {
 		big_bvh = BVH::buildBVH( mesh.triangles(), mesh, deep_count1);
 		cout << "BVH has been built." << '\n';
 		cout << "deep_count of BVH is " << BVH::deep_count << '\n';
+/*
+		if(octreeMode == true){
+			vector<unsigned int> ind(mesh.positions().size());
+			for(unsigned int k = 0; k < mesh.positions().size(); k++){
+				ind[k] = k;
+			}
+			float max_float = numeric_limits<float>::max();
+			float min_float =  - ( numeric_limits<float>::max() - 1);
+			Vec3f max_point = Vec3f(min_float, min_float, min_float);
+			Vec3f min_point = Vec3f(max_float, max_float, max_float);
+			getMinMax(min_point, max_point, mesh);
+			octreeRoot = OctreeNode::buildOctree(min_point, max_point, ind, mesh);
+		}*/
 
 		//8 light sources maximum
 		lightSources.resize(8);
@@ -536,6 +551,12 @@ void key (unsigned char keyPressed, int x, int y) {
 				break;
 		case 'g':
 				mesh.subdivide();
+				break;
+		case 'a':
+				mesh.simplifyAdaptiveMesh(5);
+				break;
+		case 'z':
+				mesh.simplifyAdaptiveMesh(20);
 				break;
     default:
         printUsage ();

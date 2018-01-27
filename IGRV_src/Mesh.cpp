@@ -8,8 +8,8 @@
 // Do not distribute this code outside the teaching assignements.
 // All rights reserved.
 // --------------------------------------------------------------------------
-
 #include "Mesh.h"
+
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
@@ -231,6 +231,55 @@ void Mesh::simplify(unsigned int resolution){
   new_positions.swap(m_positions);
   new_triangles.swap(m_triangles);
   new_normals.swap(m_normals);
+}
+
+void Mesh::simplifyAdaptiveMesh (unsigned int n){
+  vector<unsigned int> ind(m_positions.size());
+  for(unsigned int k = 0; k < m_positions.size(); k++) ind[k] = k;
+  float max_float = numeric_limits<float>::max();
+  float min_float =  - ( numeric_limits<float>::max() - 1);
+  Vec3f max_point = Vec3f(min_float, min_float, min_float);
+  Vec3f min_point = Vec3f(max_float, max_float, max_float);
+  calculateMinMax(min_point, max_point);
+  OctreeNode * octreeRoot = OctreeNode::buildOctree(min_point, max_point, ind, m_positions, n);
+  std::cout << "Octree has been built successfully with " << n << " as max number of vertices per leaf." << '\n';
+
+  std::cout << "But the use of octree has not yet been implemented." << '\n' << '\n';
+/*
+  vector<Vec3f> new_positions;
+  vector<Triangle> new_triangles;
+  vector<Vec3f> new_normals;
+  vector<unsigned int> index_map(3 * m_triangles.size());
+
+  dfs(new_positions, new_normals, octreeRoot);
+  for(unsigned int i = 0; i < new_normals.size(); i++) new_normals[i].normalize();
+  reindex(index_map, new_triangles);
+
+  new_positions.swap(m_positions);
+  new_triangles.swap(m_triangles);
+  new_normals.swap(m_normals);*/
+}
+
+void Mesh::dfs(vector<Vec3f> & new_positions, vector<Vec3f> & new_normals, OctreeNode * octreeNode){
+  if(octreeNode->isLeaf()){
+    vector<unsigned int> indices = octreeNode->getIndices();
+    Vec3f meanPosition = Vec3f(0.0f, 0.0f, 0.0f);
+    Vec3f meanNormal = Vec3f(0.0f, 0.0f, 0.0f);
+    unsigned int count = 0;
+    for(unsigned int i = 0; i < indices.size(); i++){
+      meanPosition += m_positions[indices[i]];
+      meanNormal += m_normals[indices[i]];
+      count++;
+    }
+    meanPosition /= count;
+    meanNormal /= count;
+    new_positions.push_back(meanPosition);
+    new_normals.push_back(meanNormal);
+  }else{
+    for(unsigned int i = 0; i < 8; i++){
+      dfs(new_positions, new_normals, octreeNode->getChildren()[i]);
+    }
+  }
 }
 
 void Mesh::addOddVertices(map<pair<int, int>, Vec3f> & oddVertices, map<pair<int, int>, unsigned int> & oddVertexIndices, vector<Vec3f> & new_positions){

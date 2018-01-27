@@ -16,6 +16,7 @@
 #include <set>
 #include "Vec3.h"
 #include "Triangle.h"
+#include "OctreeNode.h"
 
 struct UGridCell{
   Vec3f meanPosition;
@@ -84,6 +85,7 @@ public:
 
     // OCS simplification
     void simplify(unsigned int resolution);
+    void simplifyAdaptiveMesh (unsigned int n);
 
     //Loop subdivision
     void subdivide();
@@ -107,4 +109,5 @@ private:
     void addOddVertices(std::map<std::pair<int, int>, Vec3f> & oddVertices, std::map<std::pair<int, int>, unsigned int> & oddVertexIndices, std::vector<Vec3f> & new_positions);
     void updateEvenVertices(std::vector<unsigned int> & valence, std::vector<Vec3f> & new_positions);
     void reindex_subdivision(std::map<std::pair<int, int>, unsigned int> & oddVertexIndices, std::vector<Triangle> & new_triangles);
+    void dfs(std::vector<Vec3f> & new_positions, std::vector<Vec3f> & new_normals, OctreeNode * octreeNode);
 };
